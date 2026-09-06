@@ -118,13 +118,14 @@ func Run(ctx context.Context, cfg Config, deps Deps) (Result, error) {
 	res := Result{Manifest: manifest}
 	var subLogs []check.SubscriberLog
 	for _, s := range subs {
+		// Stop before reading: a live subscriber's receive log is buffered and
+		// only complete once Stop has flushed it.
+		if stopErr := s.Stop(); stopErr != nil {
+			return Result{}, fmt.Errorf("stop subscriber %s: %w", s.ID(), stopErr)
+		}
 		recs, rerr := s.Records()
-		stopErr := s.Stop()
 		if rerr != nil {
 			return Result{}, fmt.Errorf("read subscriber %s log: %w", s.ID(), rerr)
-		}
-		if stopErr != nil {
-			return Result{}, fmt.Errorf("stop subscriber %s: %w", s.ID(), stopErr)
 		}
 		res.Subs = append(res.Subs, SubReport{ID: s.ID(), Events: s.Events()})
 		subLogs = append(subLogs, check.SubscriberLog{ID: s.ID(), Channels: s.Channels(), Records: recs})

@@ -276,6 +276,18 @@ func (s *Subscriber) handleFrame(env envelope) {
 // Received reports how many bench records were logged so far.
 func (s *Subscriber) Received() int { return int(s.received.Load()) }
 
+// ID returns the subscriber's persistent client identity.
+func (s *Subscriber) ID() string { return s.cfg.ClientID }
+
+// Channels returns the channels this subscriber holds.
+func (s *Subscriber) Channels() []string { return s.cfg.Channels }
+
+// Records reads the flushed receive log. Only valid after Stop — the log is
+// buffered while the subscriber runs.
+func (s *Subscriber) Records() ([]rlog.Record, error) {
+	return rlog.ReadAll(s.cfg.LogPath)
+}
+
 // Events returns the recovery events recorded so far.
 func (s *Subscriber) Events() []Event {
 	s.mu.Lock()
