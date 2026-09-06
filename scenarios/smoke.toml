@@ -1,0 +1,13 @@
+# Laptop smoke: tiny, ~30s, proves the harness end-to-end. Not a published run.
+tenant          = "bench"
+channel_prefix  = "md"
+channels        = 10
+subs_per_channel = 2
+baseline_rate   = 5.0
+duration        = "30s"
+payload_size    = 300
+
+[[bursts]]
+start_fraction  = 0.5
+duration        = "2s"
+multiplier      = 8

@@ -1,0 +1,111 @@
+# Benchmark stack. Two ws-server replicas behind Docker DNS round-robin (the
+# same HA shape as a Kubernetes Service — the gateway proxies to the "ws-server"
+# name, Docker load-balances across replicas; a killed replica drops its
+# clients, who reconnect and land on the survivor). Shared Valkey broadcast bus
+# + Kafka consumer group keep both replicas delivering the same stream.
+#
+# ws-server publishes NO host ports, so it can scale to N replicas
+# (docker compose up --scale ws-server=2). Only the gateway is reachable from
+# the host — the driver connects there.
+#
+# For LOCAL smoke this builds from a sibling `../sukko` checkout (SUKKO_SRC).
+# For PUBLISHED runs, set SUKKO_IMAGE_* to released, digest-pinned images and
+# use compose/docker-compose.release.yml (ADR-0012: official numbers only from
+# pinned public images).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sukko
+      POSTGRES_PASSWORD: sukko
+      POSTGRES_DB: sukko
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sukko"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.1
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  provisioning:
+    build:
+      context: ${SUKKO_SRC:-../../sukko}/ws
+      dockerfile: build/provisioning/Dockerfile
+    environment:
+      ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:-}"
+      CREDENTIALS_ENCRYPTION_KEY: "${CREDENTIALS_ENCRYPTION_KEY:-}"
+      DATABASE_URL: "postgres://sukko:sukko@postgres:5432/sukko?sslmode=disable"
+      KAFKA_TOPIC_NAMESPACE: "bench"
+      PROVISIONING_VALKEY_ADDRS: "valkey:6379"
+    depends_on:
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  # No host ports → scalable. `docker compose up --scale ws-server=2`.
+  ws-server:
+    build:
+      context: ${SUKKO_SRC:-../../sukko}/ws
+      dockerfile: build/server/Dockerfile
+    environment:
+      - VALKEY_ADDRS=valkey:6379
+      - PROVISIONING_GRPC_ADDR=provisioning:9090
+      - MESSAGE_BACKEND=kafka
+      - KAFKA_BROKERS=redpanda:9092
+      - KAFKA_TOPIC_NAMESPACE=bench
+      # History/replay ON — the recovery claim (C2/C3) exercises it.
+      - WS_HISTORY_ENABLED=true
+      # Pod identity must differ per replica for the connections registry; the
+      # hostname is unique per replica, so derive it from that.
+      - WS_POD_ID={{.Task.Name}}
+    depends_on:
+      valkey: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      provisioning: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3005/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  ws-gateway:
+    build:
+      context: ${SUKKO_SRC:-../../sukko}/ws
+      dockerfile: build/gateway/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      GATEWAY_BACKEND_URL: "ws://ws-server:3005/ws"
+      SERVER_GRPC_ADDR: "ws-server:3006"
+    depends_on:
+      ws-server: { condition: service_healthy }

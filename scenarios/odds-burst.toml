@@ -1,0 +1,21 @@
+# Odds-burst: many channels × low per-channel rate, the shape of market data.
+# 500 channels × 4 subscribers = 2,000 active connections; ~1k msg/s baseline
+# with ×8 bursts. Sized so a ~10s outage gap per channel fits ONE replay
+# request under the server's DEFAULT settings (WS_MAX_REPLAY_MESSAGES=100).
+tenant          = "bench"
+channel_prefix  = "md"
+channels        = 500
+subs_per_channel = 4
+baseline_rate   = 2.0     # msg/s per channel
+duration        = "180s"
+payload_size    = 300     # bytes, size-padded
+
+[[bursts]]
+start_fraction  = 0.33    # first burst ~1/3 through the run
+duration        = "3s"
+multiplier      = 8
+
+[[bursts]]
+start_fraction  = 0.66    # second burst ~2/3 through — the fault lands here
+duration        = "3s"
+multiplier      = 8
