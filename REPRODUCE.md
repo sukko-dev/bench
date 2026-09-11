@@ -64,16 +64,16 @@ harness end to end without the pinned machine.
 
 ## Publishing official numbers
 
-Official runs pin **released, digest-addressed images**, not a local build
-(ADR-0012). Point the stack at them via `SUKKO_IMAGE_*` / the release compose
-overlay once the first `vX.Y.Z` is out, commit `OUT/` under
-`results/<date>-<version>/`, and record the machine slug + `sysctl` values in
-the run's notes.
+The compose stack pins the **released, digest-addressed v1.0.0 images**
+(ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
+digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
+under `results/<date>-<version>/`, and record the machine slug + `sysctl`
+values in the run's notes.
 
 ## Status
 
 The Go driver and its analysis are unit-tested and `-race`-clean. The compose
-stack, `bootstrap.sh`, and the fault scripts are pending a first booted-stack
-smoke — the exact `sukko` bootstrap flags and the 2-replica DNS-round-robin
-failover behaviour must be confirmed against a live boot before the first
-published run.
+stack now pulls the released public images (no source build). Pending a first
+booted-stack smoke: `bootstrap.sh` (provisions the bench tenant + token via the
+released `sukko` CLI) and the 2-replica DNS-round-robin failover behaviour must
+be confirmed against a live boot before the first published run.

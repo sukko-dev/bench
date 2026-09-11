@@ -8,10 +8,9 @@
 # (docker compose up --scale ws-server=2). Only the gateway is reachable from
 # the host — the driver connects there.
 #
-# For LOCAL smoke this builds from a sibling `../sukko` checkout (SUKKO_SRC).
-# For PUBLISHED runs, set SUKKO_IMAGE_* to released, digest-pinned images and
-# use compose/docker-compose.release.yml (ADR-0012: official numbers only from
-# pinned public images).
+# Images are the RELEASED, DIGEST-PINNED public v1.0.0 images (ADR-0012:
+# official numbers only from pinned public images). The SUKKO_IMAGE_* env vars
+# override them for a future release; the pinned digests below are the default.
 
 services:
   postgres:
@@ -52,9 +51,7 @@ services:
       retries: 20
 
   provisioning:
-    build:
-      context: ${SUKKO_SRC:-../../sukko}/ws
-      dockerfile: build/provisioning/Dockerfile
+    image: ${SUKKO_IMAGE_PROVISIONING:-ghcr.io/sukko-dev/sukko-provisioning@sha256:77d564695c432c28a5f450927c2f7e7b75cd5128ede760800c879c036951b724}
     environment:
       ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:-}"
       CREDENTIALS_ENCRYPTION_KEY: "${CREDENTIALS_ENCRYPTION_KEY:-}"
@@ -73,9 +70,7 @@ services:
 
   # No host ports → scalable. `docker compose up --scale ws-server=2`.
   ws-server:
-    build:
-      context: ${SUKKO_SRC:-../../sukko}/ws
-      dockerfile: build/server/Dockerfile
+    image: ${SUKKO_IMAGE_SERVER:-ghcr.io/sukko-dev/sukko-server@sha256:68ae47b3b03afb011c837195722add1e984832128832d48c8583ada74a4516b0}
     environment:
       - VALKEY_ADDRS=valkey:6379
       - PROVISIONING_GRPC_ADDR=provisioning:9090
@@ -99,9 +94,7 @@ services:
       start_period: 10s
 
   ws-gateway:
-    build:
-      context: ${SUKKO_SRC:-../../sukko}/ws
-      dockerfile: build/gateway/Dockerfile
+    image: ${SUKKO_IMAGE_GATEWAY:-ghcr.io/sukko-dev/sukko-gateway@sha256:1386a79fc6c3d91fda136be0c445127eecf21bd30bd76bf30e36d130ff4ccda2}
     ports:
       - "3000:3000"
     environment:
