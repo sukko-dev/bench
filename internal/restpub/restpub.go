@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sukko-dev/bench/internal/wire"
 )
@@ -31,6 +33,21 @@ func New(baseURL, token string) *Publisher {
 		client:   &http.Client{},
 	}
 }
+
+// RateLimitedError is returned when the gateway answers 429. After carries the parsed
+// Retry-After header (zero when absent or unparseable) so the retry loop can wait exactly
+// as long as the server asked — an immediate retry lands in the same empty token bucket.
+type RateLimitedError struct {
+	Channel string
+	After   time.Duration
+}
+
+func (e *RateLimitedError) Error() string {
+	return fmt.Sprintf("restpub: publish %s rate limited (HTTP 429, retry after %s)", e.Channel, e.After)
+}
+
+// RetryAfter reports the server's requested wait; zero means "no hint, use your own backoff".
+func (e *RateLimitedError) RetryAfter() time.Duration { return e.After }
 
 type publishRequest struct {
 	Channel string          `json:"channel"`
@@ -60,6 +77,14 @@ func (p *Publisher) Send(ctx context.Context, channel string, payload []byte) er
 		return fmt.Errorf("restpub: publish %s: %w", channel, err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusTooManyRequests {
+		_, _ = io.Copy(io.Discard, resp.Body) // drain for connection reuse
+		var after time.Duration
+		if secs, perr := strconv.Atoi(strings.TrimSpace(resp.Header.Get("Retry-After"))); perr == nil && secs > 0 {
+			after = time.Duration(secs) * time.Second
+		}
+		return &RateLimitedError{Channel: channel, After: after}
+	}
 	if resp.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
 		return fmt.Errorf("restpub: publish %s got HTTP %d: %s", channel, resp.StatusCode, strings.TrimSpace(string(snippet)))

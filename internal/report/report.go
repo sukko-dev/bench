@@ -6,6 +6,7 @@ package report
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"sort"
 	"time"
@@ -21,6 +22,24 @@ type Latency struct {
 	P99      time.Duration `json:"p99"`
 	P999     time.Duration `json:"p999"`
 	Max      time.Duration `json:"max"`
+}
+
+// LatenciesWindowed computes the distribution over records INTENDED at or after
+// cutoffUnixNano, returning the count excluded as warmup. Windowing keys on the
+// intended time (the open-loop ground truth), not the arrival time — a
+// warmup-scheduled message arriving late must not leak into the measured window.
+// A zero cutoff keeps everything, including a record intended exactly at T0=0.
+func LatenciesWindowed(recs []rlog.Record, cutoffUnixNano int64) (Latency, int) {
+	kept := make([]rlog.Record, 0, len(recs))
+	excluded := 0
+	for _, r := range recs {
+		if cutoffUnixNano > 0 && r.IntendedUnixNano < cutoffUnixNano {
+			excluded++
+			continue
+		}
+		kept = append(kept, r)
+	}
+	return Latencies(kept), excluded
 }
 
 // Latencies computes the distribution over records with a non-negative
@@ -69,13 +88,54 @@ type RecoveryStat struct {
 	GapClosedMs int64  `json:"gap_closed_ms"`
 }
 
+// MaxUnconfirmedFraction is the harness-health ceiling: the share of issued
+// publishes that may go unacknowledged before the run fails as a HARNESS fault.
+// The zero-loss verdict spans only acknowledged messages, so a large unconfirmed
+// share would shrink the claim's denominator silently; 1% keeps the verdict
+// covering effectively the whole offered load while tolerating stray 429s at
+// burst edges.
+const MaxUnconfirmedFraction = 0.01
+
+// HarnessSound reports whether the harness delivered enough of its offered load
+// for the checker's verdict to mean anything, with a human-readable reason when
+// it did not. Zero confirmed publishes always fails — a run that published
+// nothing proves nothing, no matter how green its checker is.
+func HarnessSound(confirmed, unconfirmed int) (bool, string) {
+	if confirmed == 0 {
+		return false, "no publish was ever acknowledged — the run offered no load, so the verdict is vacuous"
+	}
+	frac := float64(unconfirmed) / float64(confirmed+unconfirmed)
+	if frac > MaxUnconfirmedFraction {
+		return false, fmt.Sprintf("%.1f%% of issued publishes went unacknowledged (max %.0f%%) — harness fault (pacing or admission), not a delivery verdict", frac*100, MaxUnconfirmedFraction*100)
+	}
+	return true, ""
+}
+
 // Result is the committed per-run artifact.
 type Result struct {
-	RunID    string         `json:"run_id"`
-	Scenario string         `json:"scenario"`
-	Pass     bool           `json:"pass"`
-	Latency  Latency        `json:"latency"`
-	Holes    int            `json:"holes"`
+	RunID    string  `json:"run_id"`
+	Scenario string  `json:"scenario"`
+	Pass     bool    `json:"pass"`
+	Latency  Latency `json:"latency"`
+	Holes    int     `json:"holes"`
+
+	// Publish accounting: the loss verdict covers Confirmed only, so these make
+	// its span visible instead of hidden. HarnessFault names why a run failed
+	// on harness health rather than on delivery.
+	ConfirmedPublishes   int    `json:"confirmed_publishes"`
+	UnconfirmedPublishes int    `json:"unconfirmed_publishes"`
+	HarnessFault         string `json:"harness_fault,omitempty"`
+
+	// Warmup is the scenario's declared warmup; records intended inside it are
+	// excluded from Latency and counted in WarmupExcluded. The zero-loss verdict
+	// is NOT windowed — Holes covers the whole run.
+	Warmup         string `json:"warmup,omitempty"`
+	WarmupExcluded int    `json:"warmup_excluded,omitempty"`
+
+	// HolesSample locates up to the first holesSampleMax holes ("sub/channel seqs a-b")
+	// so a failing artifact carries its own evidence — a bare count cannot be triaged.
+	HolesSample []string `json:"holes_sample,omitempty"`
+
 	Recovery []RecoveryStat `json:"recovery,omitempty"`
 }
 

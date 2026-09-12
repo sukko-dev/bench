@@ -1,6 +1,6 @@
 // Command bench runs one benchmark scenario against a live Sukko gateway and
 // writes the result artifact. Provisioning and token minting are the harness's
-// job (see bootstrap.sh / the Makefile) — this binary takes a gateway URL and
+// job (see bootstrap.sh / the Taskfile) — this binary takes a gateway URL and
 // a ready token as inputs.
 //
 // Usage:
@@ -8,9 +8,11 @@
 //	bench --ws ws://host:3000 --http http://host:3000 --token <jwt> \
 //	      --scenario scenarios/odds-burst.toml --out results/<dir> [--run-id ID]
 //
-// Exit codes: 0 the run completed and the zero-loss checker PASSED; 1 the run
-// completed but the checker FAILED (loss/phantom/misrouting — a published
-// result); 2 the run could not execute.
+// Exit codes: 0 the run completed and both the zero-loss checker and the
+// harness-health guard PASSED; 1 the run completed but FAILED (loss/phantom/
+// misrouting, or a harness fault — a published result); 2 the run could not
+// execute. Warmup is a scenario parameter (TOML `warmup`), not a flag: it
+// windows the latency distribution only, never the loss check.
 package main
 
 import (
@@ -30,6 +32,9 @@ import (
 	"github.com/sukko-dev/bench/internal/sub"
 )
 
+// holesSampleMax caps the hole evidence embedded in result.json.
+const holesSampleMax = 10
+
 func main() {
 	os.Exit(run())
 }
@@ -41,14 +46,12 @@ func run() int {
 	scenarioPath := flag.String("scenario", "", "path to the scenario TOML")
 	outDir := flag.String("out", "", "directory for result artifacts (created if absent)")
 	runID := flag.String("run-id", "", "run identifier; defaults to the scenario basename + start time")
-	warmup := flag.Duration("warmup", 60*time.Second, "warmup excluded from the reported window (informational; the driver runs the full duration)")
 	flag.Parse()
 
 	if *wsURL == "" || *httpURL == "" || *token == "" || *scenarioPath == "" || *outDir == "" {
 		fmt.Fprintln(os.Stderr, "bench: --ws, --http, --token, --scenario, and --out are all required")
 		return 2
 	}
-	_ = *warmup // recorded in the result metadata; windowing is applied by the analysis step
 
 	f, err := os.Open(*scenarioPath)
 	if err != nil {
@@ -73,6 +76,11 @@ func run() int {
 		return 2
 	}
 
+	// One shared T0: the scenario's clock and the publisher's clock must agree, or
+	// the warmup cutoff (and intended-time latency math) would carry a skew between
+	// the two time.Now() calls that used to sit in each.
+	t0 := time.Now()
+
 	deps := scenario.Deps{
 		StartSub: func(ctx context.Context, subID string, channels []string) (scenario.Subscriber, error) {
 			return sub.Start(ctx, sub.Config{
@@ -88,7 +96,7 @@ func run() int {
 			publisher := restpub.New(*httpURL, *token)
 			return pub.Run(ctx, pub.Config{
 				RunID:       id,
-				T0:          time.Now(),
+				T0:          t0,
 				Duration:    cfg.Duration,
 				PayloadSize: cfg.PayloadSize,
 				Plans:       plans,
@@ -108,14 +116,15 @@ func run() int {
 		Bursts:         cfg.Bursts,
 		Duration:       cfg.Duration,
 		PayloadSize:    cfg.PayloadSize,
-		T0:             time.Now(),
+		T0:             t0,
 	}, deps)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "bench: run failed: %v\n", err)
 		return 2
 	}
 
-	// Latency over every subscriber's received records.
+	// Latency over every subscriber's received records, minus the warmup window
+	// (the zero-loss check below is NOT windowed).
 	var all []rlog.Record
 	entries, _ := os.ReadDir(logsDir)
 	for _, e := range entries {
@@ -126,12 +135,39 @@ func run() int {
 		all = append(all, recs...)
 	}
 
+	// The checker's verdict covers acknowledged publishes only; the harness-health
+	// guard fails the run when too little of the offered load was acknowledged for
+	// that verdict to mean anything (report.HarnessSound).
+	harnessOK, harnessFault := report.HarnessSound(res.Check.ConfirmedPublished, res.Check.UnconfirmedPublished)
+	// Connection establishment is already outside the measured window: scenario.Run
+	// starts EVERY subscriber before the publisher, at any connection count. The only
+	// transient left is pipeline cold-start (first produce/consume, cold caches),
+	// which measurement localises to the first second — hence a short declared warmup.
+	var cutoff int64
+	if cfg.Warmup > 0 {
+		cutoff = t0.Add(cfg.Warmup).UnixNano()
+	}
+	latency, warmupExcluded := report.LatenciesWindowed(all, cutoff)
 	result := report.Result{
-		RunID:    id,
-		Scenario: filepath.Base(*scenarioPath),
-		Pass:     res.Check.Pass(),
-		Latency:  report.Latencies(all),
-		Holes:    len(res.Check.Holes),
+		RunID:                id,
+		Scenario:             filepath.Base(*scenarioPath),
+		Pass:                 res.Check.Pass() && harnessOK,
+		Latency:              latency,
+		Holes:                len(res.Check.Holes),
+		ConfirmedPublishes:   res.Check.ConfirmedPublished,
+		UnconfirmedPublishes: res.Check.UnconfirmedPublished,
+		HarnessFault:         harnessFault,
+		WarmupExcluded:       warmupExcluded,
+	}
+	if cfg.Warmup > 0 {
+		result.Warmup = cfg.Warmup.String()
+	}
+	for i, h := range res.Check.Holes {
+		if i >= holesSampleMax {
+			break
+		}
+		result.HolesSample = append(result.HolesSample,
+			fmt.Sprintf("%s/%s seqs %d-%d", h.Subscriber, h.Channel, h.FromSeq, h.ToSeq))
 	}
 
 	resultPath := filepath.Join(*outDir, "result.json")
@@ -147,8 +183,13 @@ func run() int {
 		return 2
 	}
 
-	fmt.Printf("bench: run %s — pass=%v delivered=%d p50=%v p99=%v holes=%d → %s\n",
-		id, result.Pass, result.Latency.Count, result.Latency.P50, result.Latency.P99, result.Holes, resultPath)
+	fmt.Printf("bench: run %s — pass=%v confirmed=%d unconfirmed=%d delivered=%d warmup=%v(-%d) p50=%v p99=%v holes=%d → %s\n",
+		id, result.Pass, result.ConfirmedPublishes, result.UnconfirmedPublishes,
+		result.Latency.Count, cfg.Warmup, warmupExcluded,
+		result.Latency.P50, result.Latency.P99, result.Holes, resultPath)
+	if harnessFault != "" {
+		fmt.Fprintf(os.Stderr, "bench: HARNESS FAULT: %s\n", harnessFault)
+	}
 	if !result.Pass {
 		return 1
 	}

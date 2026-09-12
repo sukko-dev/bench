@@ -1,0 +1,102 @@
+version: "3"
+
+# =============================================================================
+# Benchmark harness
+# =============================================================================
+# Pattern: {domain}:{action} [VAR=value]
+#
+#   task smoke                                  laptop end-to-end check
+#   task bench SCENARIO=scenarios/odds-burst.toml   a full run
+#
+# Run 'task --list-all' to see every task.
+#
+# These tasks are the ONLY supported entry point — reproducing a published number
+# means running them, so a result is never confounded by an ad-hoc invocation.
+# Task is a prerequisite: brew install go-task/tap/go-task (see taskfile.dev).
+
+vars:
+  COMPOSE: docker compose -f compose/docker-compose.yml
+  REPLICAS: '{{.REPLICAS | default "2"}}'
+  SCENARIO: '{{.SCENARIO | default "scenarios/odds-burst.toml"}}'
+  KEYDIR: .bench-keys
+  # Fault scripts address containers by the compose project name.
+  FAULT_PROJECT: compose
+
+tasks:
+  test:
+    desc: Run the driver's unit tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  build:
+    desc: Build the bench driver
+    cmds:
+      - go build -o bin/bench ./cmd/bench
+
+  stack-up:
+    desc: Boot the benchmark stack (postgres, valkey, redpanda, provisioning, ws-server×N, gateway)
+    cmds:
+      # Both keys must be STABLE across boots: provisioning persists the bootstrap key
+      # into its database on FIRST boot, so a regenerated key silently fails auth
+      # thereafter (it takes a `task stack-down`, which wipes volumes, to re-bootstrap).
+      # `sukko auth keygen` refuses to overwrite an existing keypair, so it is safe to
+      # re-run; `sukko auth pubkey` recovers the key afterwards.
+      - |
+        command -v sukko >/dev/null || { echo "sukko CLI required (provisioning bootstrap)"; exit 1; }
+        mkdir -p {{.KEYDIR}}
+        sukko auth keygen >/dev/null 2>&1 || true
+        credfile="{{.KEYDIR}}/credentials.key"
+        [ -f "$credfile" ] || { openssl rand -hex 32 > "$credfile"; chmod 600 "$credfile"; }
+        ADMIN_BOOTSTRAP_KEY="$(sukko auth pubkey)" \
+        CREDENTIALS_ENCRYPTION_KEY="$(cat "$credfile")" \
+          {{.COMPOSE}} up -d --scale ws-server={{.REPLICAS}} --wait
+
+  stack-down:
+    desc: Tear the stack down and delete its volumes
+    cmds:
+      - '{{.COMPOSE}} down -v'
+
+  bootstrap:
+    desc: Provision the bench tenant (rules, signing key) and mint the driver token
+    cmds:
+      - ./bootstrap.sh
+
+  bench:
+    desc: Run one scenario and write the result artifact (SCENARIO=..., OUT=...)
+    deps: [build, bootstrap]
+    vars:
+      OUT: '{{.OUT | default (printf "results/%s" (now | date "20060102T150405Z"))}}'
+    cmds:
+      - |
+        set -a; source .bench.env; set +a
+        mkdir -p "{{.OUT}}"
+        cp "{{.SCENARIO}}" "{{.OUT}}/scenario.toml"
+        ./bin/bench --ws "$BENCH_WS" --http "$BENCH_HTTP" --token "$BENCH_TOKEN" \
+          --scenario "{{.SCENARIO}}" --out "{{.OUT}}"
+
+  smoke:
+    desc: One-command laptop check — boot, provision, run the tiny scenario, tear down
+    cmds:
+      - task: stack-up
+      - task: bench
+        vars:
+          SCENARIO: scenarios/smoke.toml
+          OUT: results/smoke
+      - task: stack-down
+
+  # Fault injectors — run mid-`bench` from a second shell (or from a wrapper that
+  # schedules them into the burst window).
+  fault-ws:
+    desc: Kill a ws-server replica mid-run
+    cmds:
+      - COMPOSE_PROJECT_NAME={{.FAULT_PROJECT}} ./faults/kill-ws-server.sh
+
+  fault-valkey:
+    desc: Kill Valkey (the broadcast bus) mid-run
+    cmds:
+      - COMPOSE_PROJECT_NAME={{.FAULT_PROJECT}} ./faults/kill-valkey.sh
+
+  fault-redpanda:
+    desc: Kill Redpanda mid-run
+    cmds:
+      - COMPOSE_PROJECT_NAME={{.FAULT_PROJECT}} ./faults/kill-redpanda.sh

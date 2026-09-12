@@ -88,3 +88,56 @@ payload_size = 100
 		t.Fatalf("got %d unique channels, want 500", len(seen))
 	}
 }
+
+// TestWarmupParsing pins the warmup parameter: a scenario-owned duration (METHODOLOGY:
+// "every parameter lives in the scenario TOML") excluded from the LATENCY distribution
+// only — the zero-loss check always covers the whole run. Absent means zero, and a
+// warmup that swallows the whole run is a config error, not an empty percentile set.
+func TestWarmupParsing(t *testing.T) {
+	t.Parallel()
+
+	base := `
+tenant          = "bench"
+channel_prefix  = "md"
+channels        = 2
+subs_per_channel = 1
+baseline_rate   = 1.0
+duration        = "30s"
+payload_size    = 100
+`
+	t.Run("parses a warmup", func(t *testing.T) {
+		t.Parallel()
+		c, err := Parse(strings.NewReader(base + `warmup = "5s"` + "\n"))
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		if c.Warmup != 5*time.Second {
+			t.Errorf("Warmup = %v, want 5s", c.Warmup)
+		}
+	})
+
+	t.Run("absent warmup means zero", func(t *testing.T) {
+		t.Parallel()
+		c, err := Parse(strings.NewReader(base))
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		if c.Warmup != 0 {
+			t.Errorf("Warmup = %v, want 0", c.Warmup)
+		}
+	})
+
+	t.Run("warmup at or beyond the duration is rejected", func(t *testing.T) {
+		t.Parallel()
+		if _, err := Parse(strings.NewReader(base + `warmup = "30s"` + "\n")); err == nil {
+			t.Error("Parse() with warmup == duration returned nil error; the whole run would be excluded")
+		}
+	})
+
+	t.Run("negative warmup is rejected", func(t *testing.T) {
+		t.Parallel()
+		if _, err := Parse(strings.NewReader(base + `warmup = "-1s"` + "\n")); err == nil {
+			t.Error("Parse() with negative warmup returned nil error")
+		}
+	})
+}

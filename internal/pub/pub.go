@@ -8,6 +8,7 @@ package pub
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -26,6 +27,40 @@ type SendFunc func(ctx context.Context, channel string, payload []byte) error
 // SleepFunc waits until an absolute time or ctx is done (injected for tests).
 type SleepFunc func(ctx context.Context, until time.Time) error
 
+// RetryAfterHint is implemented by send errors that carry the server's Retry-After
+// (the gateway sends it on every 429 per its constitution §IX). The retry loop waits
+// exactly the hinted duration; retrying sooner lands in the same empty token bucket.
+type RetryAfterHint interface{ RetryAfter() time.Duration }
+
+// Unhinted-retry backoff: grows retryBackoffBase, ×2 per attempt, capped.
+const (
+	retryBackoffBase = 50 * time.Millisecond
+	retryBackoffCap  = time.Second
+)
+
+// retryDelay picks the wait before the NEXT attempt: the server's hint when present
+// and positive, else exponential backoff by attempt number (1-based).
+func retryDelay(err error, attempt int) time.Duration {
+	var hint RetryAfterHint
+	if errors.As(err, &hint) && hint.RetryAfter() > 0 {
+		return hint.RetryAfter()
+	}
+	d := retryBackoffBase << (attempt - 1)
+	return min(d, retryBackoffCap)
+}
+
+// sleepFor is the production Backoff: a ctx-aware relative wait.
+func sleepFor(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // ChannelPlan pairs a channel with its rate schedule.
 type ChannelPlan struct {
 	Channel  string
@@ -42,6 +77,13 @@ type Config struct {
 	Send        SendFunc
 	SleepUntil  SleepFunc
 	MaxAttempts int // per message; default 3
+
+	// Backoff waits between retry ATTEMPTS of one message (never between scheduled
+	// sends — the scheduler stays open-loop; adapting the schedule to server
+	// back-pressure would reintroduce coordinated omission). nil = real sleep.
+	// The delay is the error's RetryAfter hint when it carries one, else
+	// exponential from retryBackoffBase capped at retryBackoffCap.
+	Backoff func(ctx context.Context, d time.Duration) error
 	// MaxInFlight bounds concurrent sends; default 256. The dispatcher never
 	// waits on a send, only on this admission cap.
 	MaxInFlight int
@@ -77,6 +119,9 @@ func Run(ctx context.Context, cfg Config) (Manifest, error) {
 	}
 	if cfg.MaxInFlight <= 0 {
 		cfg.MaxInFlight = 256
+	}
+	if cfg.Backoff == nil {
+		cfg.Backoff = sleepFor
 	}
 	m := Manifest{
 		Run:         cfg.RunID,
@@ -145,6 +190,15 @@ func Run(ctx context.Context, cfg Config) (Manifest, error) {
 					return
 				}
 				retries.Add(1)
+				// Wait before retrying — the server's Retry-After when hinted,
+				// else exponential backoff. A cancelled ctx abandons the message
+				// (it stays unconfirmed via the attempt cap on the next pass).
+				if werr := cfg.Backoff(ctx, retryDelay(err, attempt)); werr != nil {
+					mu.Lock()
+					m.Unconfirmed[channel] = append(m.Unconfirmed[channel], seq)
+					mu.Unlock()
+					return
+				}
 			}
 		}(c.plan.Channel, seq, payload)
 

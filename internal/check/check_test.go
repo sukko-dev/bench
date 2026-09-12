@@ -133,3 +133,75 @@ func TestTrailingHoleIsDetected(t *testing.T) {
 		t.Errorf("trailing hole = %+v, want seqs 4-5", h)
 	}
 }
+
+// TestUnconfirmedSeqIsNotAHole pins the loss-attribution rule: the checker may claim
+// loss only for messages the system ACKNOWLEDGED accepting. Seqs the publisher recorded
+// as unconfirmed (e.g. rate-limited at admission) were never accepted, so their absence
+// at subscribers is the harness's doing, not the platform's — demanding them convicted
+// the platform of "losing" messages it had refused, one hole per subscriber.
+func TestUnconfirmedSeqIsNotAHole(t *testing.T) {
+	m := Manifest{
+		Run:         "r1",
+		Published:   map[string]uint64{"t.a": 5},
+		Unconfirmed: map[string][]uint64{"t.a": {2, 4}},
+	}
+	// The subscriber received exactly the confirmed seqs: 1, 3, 5.
+	recs := []rlog.Record{}
+	for _, s := range []uint64{1, 3, 5} {
+		recs = append(recs, rlog.Record{Channel: "t.a", Seq: s, Mid: fmt.Sprintf("m-%d", s)})
+	}
+	rep := Run(m, []SubscriberLog{{ID: "sub-0", Channels: []string{"t.a"}, Records: recs}})
+
+	if len(rep.Holes) != 0 {
+		t.Errorf("Holes = %+v, want none (2 and 4 were never accepted)", rep.Holes)
+	}
+	if !rep.Pass() {
+		t.Errorf("Pass() = false, want true")
+	}
+	if rep.ConfirmedPublished != 3 {
+		t.Errorf("ConfirmedPublished = %d, want 3", rep.ConfirmedPublished)
+	}
+	if rep.UnconfirmedPublished != 2 {
+		t.Errorf("UnconfirmedPublished = %d, want 2", rep.UnconfirmedPublished)
+	}
+}
+
+// TestUnconfirmedSeqArrivingIsTolerated: "unconfirmed" means the ACK was lost, not
+// necessarily the message — a timeout after the gateway processed it is still a real
+// publish. Its arrival must not fail the run in either direction.
+func TestUnconfirmedSeqArrivingIsTolerated(t *testing.T) {
+	m := Manifest{
+		Run:         "r1",
+		Published:   map[string]uint64{"t.a": 3},
+		Unconfirmed: map[string][]uint64{"t.a": {2}},
+	}
+	rep := Run(m, []SubscriberLog{{ID: "sub-0", Channels: []string{"t.a"}, Records: completeLog("t.a", 3)}})
+
+	if !rep.Pass() {
+		t.Errorf("Pass() = false, want true (rep: %+v)", rep)
+	}
+	if rep.Delivered != 3 {
+		t.Errorf("Delivered = %d, want 3 (the ambiguous seq still counts when it arrives)", rep.Delivered)
+	}
+}
+
+// TestConfirmedButMissingIsStillAHole: the exclusion must be surgical. A seq that IS
+// confirmed and does not arrive remains a hole — otherwise the unconfirmed set becomes
+// a place to hide real loss.
+func TestConfirmedButMissingIsStillAHole(t *testing.T) {
+	m := Manifest{
+		Run:         "r1",
+		Published:   map[string]uint64{"t.a": 3},
+		Unconfirmed: map[string][]uint64{"t.a": {2}},
+	}
+	// Received 1 only — 3 is confirmed and missing.
+	rep := Run(m, []SubscriberLog{{ID: "sub-0", Channels: []string{"t.a"},
+		Records: []rlog.Record{{Channel: "t.a", Seq: 1, Mid: "m-1"}}}})
+
+	if len(rep.Holes) != 1 || rep.Holes[0].FromSeq != 3 || rep.Holes[0].ToSeq != 3 {
+		t.Errorf("Holes = %+v, want exactly the confirmed-and-missing seq 3", rep.Holes)
+	}
+	if rep.Pass() {
+		t.Error("Pass() = true, want false")
+	}
+}

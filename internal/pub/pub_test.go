@@ -206,3 +206,92 @@ func TestContextCancelStopsRun(t *testing.T) {
 		t.Fatal("Run ignored a cancelled context")
 	}
 }
+
+// hintedErr fakes a rate-limit rejection carrying the server's Retry-After.
+type hintedErr struct{ after time.Duration }
+
+func (e *hintedErr) Error() string             { return "rate limited (test)" }
+func (e *hintedErr) RetryAfter() time.Duration { return e.after }
+
+// backoffRecorder captures the delays the retry loop waits between attempts.
+type backoffRecorder struct {
+	mu     sync.Mutex
+	delays []time.Duration
+}
+
+func (b *backoffRecorder) fn(ctx context.Context, d time.Duration) error {
+	b.mu.Lock()
+	b.delays = append(b.delays, d)
+	b.mu.Unlock()
+	return ctx.Err()
+}
+
+// TestRetryHonorsRetryAfterHint pins the §IX handshake from the client side: when a send
+// error carries the server's Retry-After, the retry MUST wait exactly that long. Retrying
+// sooner lands in the same empty token bucket — it cannot succeed, and it triples the load
+// on the endpoint that just asked for less.
+func TestRetryHonorsRetryAfterHint(t *testing.T) {
+	c := &capture{}
+	var mu sync.Mutex
+	failures := 2
+	rateLimited := func(ctx context.Context, channel string, raw []byte) error {
+		mu.Lock()
+		left := failures
+		if left > 0 {
+			failures--
+		}
+		mu.Unlock()
+		if left > 0 {
+			return &hintedErr{after: 2 * time.Second}
+		}
+		return c.fn(ctx, channel, raw)
+	}
+	rec := &backoffRecorder{}
+	m, err := Run(context.Background(), Config{
+		RunID: "r1", T0: time.Unix(1_757_000_000, 0), Duration: time.Second, PayloadSize: 200,
+		Plans: []ChannelPlan{{Channel: "t.a", Schedule: schedule.New(1.0, nil)}},
+		Send:  rateLimited, SleepUntil: instantSleep, Backoff: rec.fn, MaxAttempts: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(m.Unconfirmed["t.a"]) != 0 {
+		t.Fatalf("Unconfirmed = %+v, want none (third attempt succeeds)", m.Unconfirmed)
+	}
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.delays) != 2 {
+		t.Fatalf("recorded %d backoffs (%v), want 2 (one before each retry)", len(rec.delays), rec.delays)
+	}
+	for i, d := range rec.delays {
+		if d != 2*time.Second {
+			t.Errorf("backoff[%d] = %v, want 2s (the server's Retry-After)", i, d)
+		}
+	}
+}
+
+// TestRetryBacksOffWithoutHint: an unhinted failure must still wait — growing delays,
+// never an immediate retry — but bounded, so a dead endpoint doesn't stall the run.
+func TestRetryBacksOffWithoutHint(t *testing.T) {
+	alwaysFail := func(context.Context, string, []byte) error { return context.DeadlineExceeded }
+	rec := &backoffRecorder{}
+	m, err := Run(context.Background(), Config{
+		RunID: "r1", T0: time.Unix(1_757_000_000, 0), Duration: time.Second, PayloadSize: 200,
+		Plans: []ChannelPlan{{Channel: "t.a", Schedule: schedule.New(1.0, nil)}},
+		Send:  alwaysFail, SleepUntil: instantSleep, Backoff: rec.fn, MaxAttempts: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(m.Unconfirmed["t.a"]) != 1 {
+		t.Fatalf("Unconfirmed = %+v, want the one seq after MaxAttempts", m.Unconfirmed)
+	}
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.delays) != 2 {
+		t.Fatalf("recorded %d backoffs (%v), want 2", len(rec.delays), rec.delays)
+	}
+	if rec.delays[0] <= 0 || rec.delays[1] <= rec.delays[0] {
+		t.Errorf("delays = %v, want positive and growing (exponential backoff)", rec.delays)
+	}
+}

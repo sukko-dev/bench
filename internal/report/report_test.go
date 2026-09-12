@@ -100,3 +100,81 @@ func TestWriteResultIsValidJSONWithVerdict(t *testing.T) {
 		t.Errorf("p99 serialized as %v, want \"9ms\"", lat["p99"])
 	}
 }
+
+// TestHarnessSound pins the harness-health guard. Excluding unconfirmed publishes from
+// the loss claim is only honest when there are FEW of them: a run where the harness
+// failed to deliver most of its offered load proves nothing, and must fail loudly as a
+// harness fault — not pass with a quietly shrunken denominator.
+func TestHarnessSound(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		confirmed   int
+		unconfirmed int
+		wantOK      bool
+	}{
+		{"clean run", 1000, 0, true},
+		{"a few retly-limited stragglers under the threshold", 1000, 5, true},
+		{"rejection fraction above threshold fails", 1000, 100, false},
+		{"nothing confirmed fails even with nothing unconfirmed", 0, 0, false},
+		{"everything rejected fails (the original vacuous-pass run)", 0, 2200, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ok, reason := HarnessSound(tt.confirmed, tt.unconfirmed)
+			if ok != tt.wantOK {
+				t.Errorf("HarnessSound(%d, %d) = %v (%q), want %v", tt.confirmed, tt.unconfirmed, ok, reason, tt.wantOK)
+			}
+			if !ok && reason == "" {
+				t.Error("a failing verdict must carry a reason")
+			}
+		})
+	}
+}
+
+// TestLatenciesWindowed pins the warmup exclusion: records INTENDED during warmup are
+// excluded from the distribution and counted separately — never silently folded in
+// (early sends carry connection-establishment noise the percentiles do not claim to
+// measure), and never silently dropped either (the excluded count is reported).
+// Windowing keys on the INTENDED time, not the arrival time: a warmup-scheduled message
+// arriving late must not sneak into the measured window, and the open-loop schedule
+// makes intended times the ground truth.
+func TestLatenciesWindowed(t *testing.T) {
+	t.Parallel()
+
+	recs := []rlog.Record{
+		{IntendedUnixNano: 100, ArrivalUnixNano: 100 + int64(50*time.Millisecond)}, // warmup
+		{IntendedUnixNano: 900, ArrivalUnixNano: 900 + int64(40*time.Millisecond)}, // warmup, arrives late
+		{IntendedUnixNano: 1000, ArrivalUnixNano: 1000 + int64(10*time.Millisecond)},
+		{IntendedUnixNano: 2000, ArrivalUnixNano: 2000 + int64(20*time.Millisecond)},
+	}
+	l, excluded := LatenciesWindowed(recs, 1000)
+
+	if excluded != 2 {
+		t.Errorf("excluded = %d, want 2 (both warmup-intended records)", excluded)
+	}
+	if l.Count != 2 {
+		t.Errorf("Count = %d, want 2", l.Count)
+	}
+	if l.Max != 20*time.Millisecond {
+		t.Errorf("Max = %v, want 20ms — the 40ms and 50ms warmup latencies must not leak in", l.Max)
+	}
+}
+
+// TestLatenciesWindowed_ZeroCutoffKeepsEverything: warmup=0 (the default) must be a
+// no-op, not an accidental exclusion of the record intended exactly at T0.
+func TestLatenciesWindowed_ZeroCutoffKeepsEverything(t *testing.T) {
+	t.Parallel()
+
+	recs := []rlog.Record{
+		{IntendedUnixNano: 0, ArrivalUnixNano: int64(5 * time.Millisecond)},
+		{IntendedUnixNano: 500, ArrivalUnixNano: 500 + int64(7*time.Millisecond)},
+	}
+	l, excluded := LatenciesWindowed(recs, 0)
+	if excluded != 0 || l.Count != 2 {
+		t.Errorf("excluded = %d, Count = %d; want 0 and 2", excluded, l.Count)
+	}
+}
