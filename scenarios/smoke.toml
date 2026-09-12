@@ -5,6 +5,10 @@ channels        = 10
 subs_per_channel = 2
 baseline_rate   = 5.0
 duration        = "30s"
+# Measured: per-second p99 is 96-119ms in second 0 and 25-32ms from second 1 on
+# (3 runs) — the cold-start transient is confined to the first second. Connection
+# setup is already outside the window (all subscribers start before the publisher).
+warmup          = "1s"
 payload_size    = 300
 
 [[bursts]]

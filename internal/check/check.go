@@ -20,7 +20,13 @@ import "github.com/sukko-dev/bench/internal/rlog"
 // Manifest is the publisher's account of what was published.
 type Manifest struct {
 	Run       string
-	Published map[string]uint64 // channel → final seq (1-based count)
+	Published map[string]uint64 // channel → final seq issued (1-based count)
+
+	// Unconfirmed lists seqs whose publish was never acknowledged (rejected or the
+	// ack lost). The checker may claim LOSS only for acknowledged messages, so these
+	// are excluded from the coverage requirement — but their arrival is tolerated,
+	// because an ambiguous failure (timeout after processing) is still a real publish.
+	Unconfirmed map[string][]uint64
 }
 
 // SubscriberLog is one subscriber's full receive history plus its subscription set.
@@ -50,9 +56,16 @@ type Report struct {
 	Delivered          int // records counted after mid-dedupe
 	RedeliveredMids    int
 	DuplicatePublishes int
-	Holes              []Hole
-	Phantoms           []Delivery
-	Misrouted          []Delivery
+
+	// ConfirmedPublished / UnconfirmedPublished summarize the manifest: seqs the
+	// gateway acknowledged vs seqs it did not. The zero-loss verdict covers only
+	// the confirmed set, so these counts are how a reader (and the harness-health
+	// guard in the driver) sees how much of the offered load that verdict spans.
+	ConfirmedPublished   int
+	UnconfirmedPublished int
+	Holes                []Hole
+	Phantoms             []Delivery
+	Misrouted            []Delivery
 }
 
 // Pass reports whether the run satisfies the zero-loss invariants.
@@ -63,6 +76,20 @@ func (r Report) Pass() bool {
 // Run checks every subscriber log against the manifest.
 func Run(m Manifest, subs []SubscriberLog) Report {
 	var rep Report
+
+	// Per-channel unconfirmed sets, and the manifest-level accounting.
+	unconfirmed := make(map[string]map[uint64]bool, len(m.Unconfirmed))
+	for ch, seqs := range m.Unconfirmed {
+		set := make(map[uint64]bool, len(seqs))
+		for _, s := range seqs {
+			set[s] = true
+		}
+		unconfirmed[ch] = set
+	}
+	for ch, last := range m.Published {
+		rep.ConfirmedPublished += int(last) - len(unconfirmed[ch])
+		rep.UnconfirmedPublished += len(unconfirmed[ch])
+	}
 	for _, sub := range subs {
 		subscribed := make(map[string]bool, len(sub.Channels))
 		for _, ch := range sub.Channels {
@@ -105,6 +132,11 @@ func Run(m Manifest, subs []SubscriberLog) Report {
 			var holeStart uint64
 			inHole := false
 			for s := uint64(1); s <= total; s++ {
+				// Never-acknowledged seqs are the harness's account, not the
+				// platform's — excluded from the loss claim.
+				if unconfirmed[ch][s] {
+					continue
+				}
 				missing := !seenSeq[ch][s]
 				switch {
 				case missing && !inHole:

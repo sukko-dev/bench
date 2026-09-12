@@ -1,13 +1,23 @@
 # Odds-burst: many channels × low per-channel rate, the shape of market data.
-# 500 channels × 4 subscribers = 2,000 active connections; ~1k msg/s baseline
-# with ×8 bursts. Sized so a ~10s outage gap per channel fits ONE replay
-# request under the server's DEFAULT settings (WS_MAX_REPLAY_MESSAGES=100).
+# 120 channels × 4 subscribers = 480 active connections — sized INSIDE the
+# Community edition's 500-connection cap (a license wall, not an env var; the
+# benchmark's claim is that it runs entirely on the free tier, so the scenario
+# must fit it, with headroom for reconnect churn during the kill test).
+# ~240 msg/s baseline with ×8 bursts (~1,920/s peak). Per-channel rate is
+# unchanged, so a ~10s outage gap per channel still fits ONE replay request
+# under the server's DEFAULT settings (WS_MAX_REPLAY_MESSAGES=100).
 tenant          = "bench"
 channel_prefix  = "md"
-channels        = 500
+channels        = 120
 subs_per_channel = 4
 baseline_rate   = 2.0     # msg/s per channel
 duration        = "180s"
+# Pipeline cold-start only — connection setup is already outside the measured
+# window (every subscriber starts before the publisher, at any connection count).
+# Measured at ~1s on the smoke; 2s here as modest headroom for 12x the channels.
+# Excluded from the LATENCY distribution only; the zero-loss checker always
+# covers the whole run.
+warmup          = "2s"
 payload_size    = 300     # bytes, size-padded
 
 [[bursts]]

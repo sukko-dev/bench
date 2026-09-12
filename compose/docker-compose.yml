@@ -52,11 +52,15 @@ services:
 
   provisioning:
     image: ${SUKKO_IMAGE_PROVISIONING:-ghcr.io/sukko-dev/sukko-provisioning@sha256:77d564695c432c28a5f450927c2f7e7b75cd5128ede760800c879c036951b724}
+    # REST API exposed so bootstrap.sh can provision the bench tenant + token
+    # from the host. Not on the message path — the driver only talks to the gateway.
+    ports:
+      - "18080:8080"
     environment:
       ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:-}"
       CREDENTIALS_ENCRYPTION_KEY: "${CREDENTIALS_ENCRYPTION_KEY:-}"
       DATABASE_URL: "postgres://sukko:sukko@postgres:5432/sukko?sslmode=disable"
-      KAFKA_TOPIC_NAMESPACE: "bench"
+      KAFKA_TOPIC_NAMESPACE: "local"
       PROVISIONING_VALKEY_ADDRS: "valkey:6379"
     depends_on:
       postgres: { condition: service_healthy }
@@ -76,7 +80,7 @@ services:
       - PROVISIONING_GRPC_ADDR=provisioning:9090
       - MESSAGE_BACKEND=kafka
       - KAFKA_BROKERS=redpanda:9092
-      - KAFKA_TOPIC_NAMESPACE=bench
+      - KAFKA_TOPIC_NAMESPACE=local
       # History/replay ON — the recovery claim (C2/C3) exercises it.
       - WS_HISTORY_ENABLED=true
       # Pod identity must differ per replica for the connections registry; the
@@ -100,5 +104,18 @@ services:
     environment:
       GATEWAY_BACKEND_URL: "ws://ws-server:3005/ws"
       SERVER_GRPC_ADDR: "ws-server:3006"
+      # Tenant JWT signing keys, API keys and revocations reach the gateway ONLY over
+      # this stream — without it every token fails "unverifiable" and the gateway
+      # retries a dead [::1]:9090 forever.
+      PROVISIONING_GRPC_ADDR: "provisioning:9090"
+      # DISCLOSED deviation from stock defaults (see METHODOLOGY.md): the default
+      # publish admission limit (10 msg/s per principal) is an anti-abuse control,
+      # not pipeline capacity, and the whole bench publishes as ONE principal. The
+      # bench measures the delivery pipeline, so admission is raised above the
+      # odds-burst peak (~1,920 msg/s) — via ordinary operator env config available
+      # on every edition, so a Community operator can reproduce this exactly.
+      GATEWAY_PUBLISH_RATE_LIMIT: "2500"
+      GATEWAY_PUBLISH_BURST: "5000"
     depends_on:
       ws-server: { condition: service_healthy }
+      provisioning: { condition: service_healthy }

@@ -21,6 +21,7 @@ type tomlConfig struct {
 	SubsPerChannel int         `toml:"subs_per_channel"`
 	BaselineRate   float64     `toml:"baseline_rate"`
 	Duration       string      `toml:"duration"`
+	Warmup         string      `toml:"warmup"`
 	PayloadSize    int         `toml:"payload_size"`
 	Bursts         []tomlBurst `toml:"bursts"`
 }
@@ -41,7 +42,14 @@ type Config struct {
 	BaselineRate   float64
 	Duration       time.Duration
 	PayloadSize    int
-	Bursts         []scenario.Burst
+
+	// Warmup is excluded from the reported LATENCY distribution (records whose
+	// intended time falls inside it) — connection-establishment and cache-warm
+	// effects are not what the percentiles claim to measure. The zero-loss
+	// checker always covers the whole run: a message is not excused for being
+	// lost early. Zero (or absent) disables the exclusion.
+	Warmup time.Duration
+	Bursts []scenario.Burst
 }
 
 // Parse reads and validates a scenario TOML.
@@ -72,6 +80,19 @@ func Parse(r io.Reader) (Config, error) {
 	if dur <= 0 {
 		return Config{}, fmt.Errorf("duration must be positive, got %v", dur)
 	}
+	var warmup time.Duration
+	if tc.Warmup != "" {
+		warmup, err = time.ParseDuration(tc.Warmup)
+		if err != nil {
+			return Config{}, fmt.Errorf("warmup: %w", err)
+		}
+		if warmup < 0 {
+			return Config{}, fmt.Errorf("warmup must not be negative, got %v", warmup)
+		}
+		if warmup >= dur {
+			return Config{}, fmt.Errorf("warmup (%v) must be shorter than duration (%v) — it would exclude the whole run", warmup, dur)
+		}
+	}
 	prefix := tc.ChannelPrefix
 	if prefix == "" {
 		prefix = "ch"
@@ -83,6 +104,7 @@ func Parse(r io.Reader) (Config, error) {
 		BaselineRate:   tc.BaselineRate,
 		Duration:       dur,
 		PayloadSize:    tc.PayloadSize,
+		Warmup:         warmup,
 	}
 	for i := range tc.Channels {
 		c.Channels = append(c.Channels, fmt.Sprintf("%s.%s-%d", tc.Tenant, prefix, i))

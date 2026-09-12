@@ -3,6 +3,7 @@ package scenario
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,9 +21,16 @@ type fakeSub struct {
 	records  []rlog.Record
 	events   []sub.Event
 	stopped  bool
+	onStop   func()
 }
 
-func (f *fakeSub) Stop() error                     { f.stopped = true; return nil }
+func (f *fakeSub) Stop() error {
+	f.stopped = true
+	if f.onStop != nil {
+		f.onStop()
+	}
+	return nil
+}
 func (f *fakeSub) Events() []sub.Event             { return f.events }
 func (f *fakeSub) Records() ([]rlog.Record, error) { return f.records, nil }
 func (f *fakeSub) ID() string                      { return f.id }
@@ -205,3 +213,48 @@ func TestChannelPlansShareBurstProfile(t *testing.T) {
 
 var _ Subscriber = (*fakeSub)(nil)
 var _ = check.Report{}
+
+// TestDrainRunsBetweenPublisherAndStop pins the teardown ordering that closes the
+// final-message race: the last publish is CONFIRMED at the gateway while its fan-out is
+// still in flight, so stopping subscribers immediately after RunPub loses the tail seq
+// (observed live as every channel's final seq missing at every subscriber) and convicts
+// the platform of losing a message the harness refused to wait for.
+func TestDrainRunsBetweenPublisherAndStop(t *testing.T) {
+	var order []string
+	var mu sync.Mutex
+	note := func(ev string) {
+		mu.Lock()
+		order = append(order, ev)
+		mu.Unlock()
+	}
+
+	deps := Deps{
+		StartSub: func(_ context.Context, id string, channels []string) (Subscriber, error) {
+			return &fakeSub{id: id, channels: channels, onStop: func() { note("stop") }}, nil
+		},
+		RunPub: func(context.Context, []pub.ChannelPlan) (pub.Manifest, error) {
+			note("pub-done")
+			return pub.Manifest{Published: map[string]uint64{}}, nil
+		},
+		Drain: func(context.Context) { note("drain") },
+	}
+	_, err := Run(context.Background(), Config{
+		RunID: "r1", Channels: []string{"t.a"}, SubsPerChannel: 2,
+		BaselineRate: 1, Duration: time.Second, PayloadSize: 100, T0: time.Unix(0, 0),
+	}, deps)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	want := []string{"pub-done", "drain", "stop", "stop"}
+	if len(order) != len(want) {
+		t.Fatalf("order = %v, want %v", order, want)
+	}
+	for i := range want {
+		if order[i] != want[i] {
+			t.Fatalf("order = %v, want %v (drain must sit between publisher completion and every Stop)", order, want)
+		}
+	}
+}

@@ -28,9 +28,20 @@ type Subscriber interface {
 }
 
 // Deps are the injected seams that touch the network.
+// drainGrace is how long subscribers stay open after the publisher finishes.
+// The final publish is CONFIRMED at the gateway while its fan-out is still in
+// flight; stopping immediately races that tail and records the last seq of
+// every channel as a hole (observed live). 2s is an order of magnitude above
+// the measured p999 delivery latency.
+const drainGrace = 2 * time.Second
+
 type Deps struct {
 	StartSub func(ctx context.Context, id string, channels []string) (Subscriber, error)
 	RunPub   func(ctx context.Context, plans []pub.ChannelPlan) (pub.Manifest, error)
+
+	// Drain waits out in-flight deliveries between publisher completion and
+	// subscriber teardown. nil = a ctx-aware drainGrace sleep.
+	Drain func(ctx context.Context)
 }
 
 // Burst is a burst window expressed as a fraction of the run duration, so the
@@ -115,6 +126,20 @@ func Run(ctx context.Context, cfg Config, deps Deps) (Result, error) {
 		return Result{}, fmt.Errorf("run publisher: %w", err)
 	}
 
+	// Let the in-flight tail land before tearing subscribers down.
+	drain := deps.Drain
+	if drain == nil {
+		drain = func(ctx context.Context) {
+			t := time.NewTimer(drainGrace)
+			defer t.Stop()
+			select {
+			case <-t.C:
+			case <-ctx.Done():
+			}
+		}
+	}
+	drain(ctx)
+
 	res := Result{Manifest: manifest}
 	var subLogs []check.SubscriberLog
 	for _, s := range subs {
@@ -135,30 +160,16 @@ func Run(ctx context.Context, cfg Config, deps Deps) (Result, error) {
 	return res, nil
 }
 
-// checkManifest builds the checker's expectation: what was published MINUS the
-// seqs the publisher never confirmed (unconfirmed publishes were never expected
-// at subscribers, so counting them would false-FAIL the run). An unconfirmed
-// seq that is the channel's tail lowers the expected count; an interior
-// unconfirmed seq is left in place (its absence would be a real hole) — but the
-// publisher's unconfirmed set is rare and the common case is a trailing gap, so
-// we lower Published to the highest contiguous confirmed seq.
+// checkManifest hands the checker the publisher's FULL account: every seq issued
+// plus the set that was never acknowledged. The checker excludes unconfirmed seqs
+// from the loss claim itself (loss is only claimable for acknowledged messages) and
+// reports confirmed/unconfirmed counts, so nothing is trimmed here — the earlier
+// trailing-trim ("highestConfirmed") could reduce a fully-rejected channel to
+// Published=0 and let a run that delivered NOTHING pass vacuously.
 func checkManifest(runID string, m pub.Manifest) check.Manifest {
 	published := make(map[string]uint64, len(m.Published))
 	for ch, last := range m.Published {
-		published[ch] = highestConfirmed(last, m.Unconfirmed[ch])
+		published[ch] = last
 	}
-	return check.Manifest{Run: runID, Published: published}
-}
-
-// highestConfirmed returns the largest seq ≤ last with no unconfirmed seq at or
-// below it left un-accounted — i.e. it trims a trailing run of unconfirmed seqs.
-func highestConfirmed(last uint64, unconfirmed []uint64) uint64 {
-	un := make(map[uint64]bool, len(unconfirmed))
-	for _, s := range unconfirmed {
-		un[s] = true
-	}
-	for last > 0 && un[last] {
-		last--
-	}
-	return last
+	return check.Manifest{Run: runID, Published: published, Unconfirmed: m.Unconfirmed}
 }

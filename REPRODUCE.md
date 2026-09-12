@@ -31,23 +31,26 @@ sudo sysctl -w net.core.somaxconn=4096             # connect-ramp backlog
 - Go 1.26+ (to build the driver).
 - The `sukko` CLI on PATH (provisions the bench tenant + mints the token;
   the driver never provisions).
+- [Task](https://taskfile.dev) — the task runner every Sukko repo uses, and the
+  only supported entry point here (`brew install go-task/tap/go-task`, or see
+  taskfile.dev for other platforms).
 
 ## Run it
 
 ```sh
-make stack-up                       # boot: postgres, valkey, redpanda,
+task stack-up                       # boot: postgres, valkey, redpanda,
                                     # provisioning, 2× ws-server, gateway
-make bench SCENARIO=scenarios/odds-burst.toml OUT=results/$(date -u +%Y%m%dT%H%M%SZ)
+task bench SCENARIO=scenarios/odds-burst.toml OUT=results/$(date -u +%Y%m%dT%H%M%SZ)
 ```
 
-`make bench` provisions (bootstrap.sh), builds the driver, runs the scenario,
+`task bench` provisions (bootstrap.sh), builds the driver, runs the scenario,
 and writes `result.json` + raw per-subscriber receive logs under `OUT/`.
 
 For the failure runs, schedule a fault into the second burst window from a
 second shell while `bench` is running:
 
 ```sh
-sleep <into-the-burst> && make fault-ws        # or fault-valkey / fault-redpanda
+sleep <into-the-burst> && task fault-ws        # or fault-valkey / fault-redpanda
 ```
 
 Then restart the killed dependency (`docker compose ... start <svc>`) for the
@@ -56,7 +59,7 @@ recovery-window measurement.
 ## Laptop smoke (not a published number)
 
 ```sh
-make smoke
+task smoke
 ```
 
 Boots the stack, runs a 30 s / 10-channel scenario, tears down — proves the
@@ -72,8 +75,92 @@ values in the run's notes.
 
 ## Status
 
-The Go driver and its analysis are unit-tested and `-race`-clean. The compose
-stack now pulls the released public images (no source build). Pending a first
-booted-stack smoke: `bootstrap.sh` (provisions the bench tenant + token via the
-released `sukko` CLI) and the 2-replica DNS-round-robin failover behaviour must
-be confirmed against a live boot before the first published run.
+The Go driver and its analysis are unit-tested and `-race`-clean.
+
+**First live boot completed 2026-09-11** (source-built images, unlicensed Community
+stack). What it established:
+
+- The harness runs end to end: provision → subscribe → publish → fan-out → receive
+  → checker, with healthy latency (p50 ~16 ms, p99 ~33 ms on a laptop).
+- `bootstrap.sh` drift is corrected and the corrections are recorded in the script.
+- **Two blocking stack-config bugs were found and fixed** in `compose/docker-compose.yml`:
+  the gateway had no `PROVISIONING_GRPC_ADDR`, so its key/API-key/revocation streams
+  never connected and every token failed as unverifiable.
+
+**Open before any published number:** nothing — the harness defects are closed.
+What remains before official numbers is operational: rent the pinned VM, re-pin the
+compose digests to a release carrying the routing-rules and Retry-After changes, and
+run the fault matrix.
+
+**Closed** (2026-09-12): the publisher/checker accounting fault, the vacuous-pass
+fault, and the inert warmup flag — `warmup` now lives in the scenario TOML (excluded
+from the latency distribution only; the zero-loss check always covers the whole run,
+and `result.json` reports `warmup`/`warmup_excluded`). The working checker then
+immediately caught a fourth defect: a teardown race losing each channel's FINAL seq
+(publish confirmed, fan-out still in flight when subscribers were stopped) — closed
+with a 2s drain grace between publisher completion and teardown, pinned by an
+ordering test. `result.json` also now embeds `holes_sample` evidence so a failing
+run can be triaged from the artifact alone. Verified: three consecutive smokes,
+holes=0, all confirmed publishes delivered. The retry path now honours 429 `Retry-After` (with capped exponential backoff
+when unhinted); the checker claims loss only for ACKNOWLEDGED publishes — unconfirmed
+seqs are excluded from the coverage requirement but tolerated if they arrive — and
+`result.json` reports `confirmed_publishes`/`unconfirmed_publishes`. A run FAILS as a
+harness fault when nothing was confirmed or the unconfirmed share exceeds 1%
+(`report.HarnessSound`), so the shrunken-denominator and zero-delivery greens are both
+impossible. Publish admission is raised above the workload peak in the compose stack —
+the disclosed deviation in METHODOLOGY.md §4. The `odds-burst` scenario is sized inside
+the Community 500-connection cap (120×4 = 480).
+
+## Publishing official numbers
+
+The compose stack pins the **released, digest-addressed v1.0.0 images**
+(ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
+digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
+under `results/<date>-<version>/`, and record the machine slug + `sysctl`
+values in the run's notes.
+
+## Status
+
+The Go driver and its analysis are unit-tested and `-race`-clean.
+
+**First live boot completed 2026-09-11** (source-built images, unlicensed Community
+stack). What it established:
+
+- The harness runs end to end: provision → subscribe → publish → fan-out → receive
+  → checker, with healthy latency (p50 ~16 ms, p99 ~33 ms on a laptop).
+- `bootstrap.sh` drift is corrected and the corrections are recorded in the script.
+- **Two blocking stack-config bugs were found and fixed** in `compose/docker-compose.yml`:
+  the gateway had no `PROVISIONING_GRPC_ADDR`, so its key/API-key/revocation streams
+  never connected and every token failed as unverifiable.
+
+**Open before any published number:**
+
+1. **The driver outruns the gateway's publish rate limit, and miscounts the result.**
+   Root-caused 2026-09-11 from `gateway_rest_publish_total`: of ~18,300 attempts only
+   **796 succeeded**; ~10,900 were `rate_limited` (429) and the rest `forbidden`
+   (pre-setup). The two smoke runs delivered 792 + 794 = 1586 receives against
+   796 accepted publishes × 2 subscribers per channel = 1592 expected — i.e. the
+   platform delivered essentially **everything it accepted**. There is no delivery
+   loss. Two fixes are needed on the harness side:
+   - Pace the publisher to the gateway's per-tenant publish limit (or raise the limit
+     deliberately for the bench tenant and disclose it in METHODOLOGY).
+   - **Stop counting rejected publishes as expected deliveries.** `pub.Run` sets
+     `m.Published[ch] = seq` BEFORE dispatch, so it records sequence numbers *issued*;
+     sends that never confirm land in `m.Unconfirmed` and the checker never consults it.
+     `check.Run` then requires every subscriber to have received `1..Published[ch]`,
+     turning each rejected publish into a Hole for every subscriber. Either exclude
+     `Unconfirmed` from the coverage requirement, or only advance `Published` on
+     confirmation.
+
+2. **Vacuous-pass bug in the checker.** A run that delivered ZERO messages reported
+   `pass=true, holes=0`. Zero delivered must fail — otherwise a totally broken run
+   ships as a green result.
+
+3. **The `--warmup` flag is inert.** `cmd/bench/main.go` parses it and discards it
+   (`_ = *warmup`); the "analysis step" that would apply the window does not exist.
+   Either implement the windowing or remove the flag — as it stands it silently
+   promises an exclusion that never happens.
+
+Note for (1): a Hole is a *contiguous range* of missing seqs per (subscriber, channel),
+not one missing message — so the headline "454 holes" counted gap-ranges produced by a
+single systemic cause, not 454 independent faults.
