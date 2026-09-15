@@ -67,7 +67,7 @@ harness end to end without the pinned machine.
 
 ## Publishing official numbers
 
-The compose stack pins the **released, digest-addressed v1.0.0 images**
+The compose stack pins the **released, digest-addressed v1.0.1 images**
 (ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
 digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
 under `results/<date>-<version>/`, and record the machine slug + `sysctl`
@@ -87,10 +87,10 @@ stack). What it established:
   the gateway had no `PROVISIONING_GRPC_ADDR`, so its key/API-key/revocation streams
   never connected and every token failed as unverifiable.
 
-**Open before any published number:** nothing — the harness defects are closed.
-What remains before official numbers is operational: rent the pinned VM, re-pin the
-compose digests to a release carrying the routing-rules and Retry-After changes, and
-run the fault matrix.
+**Open before any published number:** nothing — the harness defects are closed, and
+the compose stack is pinned to `v1.0.1`, the first release carrying the
+routing-rules and Retry-After changes. What remains before official numbers is
+operational: rent the pinned VM and run the fault matrix.
 
 **Closed** (2026-09-12): the publisher/checker accounting fault, the vacuous-pass
 fault, and the inert warmup flag — `warmup` now lives in the scenario TOML (excluded
@@ -113,7 +113,7 @@ the Community 500-connection cap (120×4 = 480).
 
 ## Publishing official numbers
 
-The compose stack pins the **released, digest-addressed v1.0.0 images**
+The compose stack pins the **released, digest-addressed v1.0.1 images**
 (ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
 digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
 under `results/<date>-<version>/`, and record the machine slug + `sysctl`
