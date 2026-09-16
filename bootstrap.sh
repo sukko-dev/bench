@@ -64,7 +64,15 @@ sukko keys create --api-url "$PROV_URL" --tenant "$TENANT" --generate \
 # The JWT carries the `kid` header the gateway needs to resolve the signing key;
 # with no --key-id it is derived from the key-file basename, which is the id
 # `keys create --key-id` registered.
-KEYPEM="${KEYPEM:-$HOME/Library/Application Support/sukko/keys/$TENANT/benchkey.pem}"
+# The CLI stores keys under Go's os.UserConfigDir(), which differs per platform:
+# macOS uses ~/Library/Application Support, every other Unix uses $XDG_CONFIG_HOME
+# (default ~/.config). Published runs happen on the Linux VM in REPRODUCE.md, so
+# hardcoding the macOS path breaks the documented recipe on the machine it names.
+case "$(uname -s)" in
+  Darwin) SUKKO_CONFIG_DIR="$HOME/Library/Application Support" ;;
+  *)      SUKKO_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}" ;;
+esac
+KEYPEM="${KEYPEM:-$SUKKO_CONFIG_DIR/sukko/keys/$TENANT/benchkey.pem}"
 TOKEN="$(sukko token generate --tenant "$TENANT" --sub bench-driver \
   --key-file "$KEYPEM" --key-id benchkey --algorithm ES256 --ttl 1h)"
 
