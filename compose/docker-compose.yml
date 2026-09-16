@@ -83,6 +83,13 @@ services:
       - KAFKA_TOPIC_NAMESPACE=local
       # History/replay ON — the recovery claim (C2/C3) exercises it.
       - WS_HISTORY_ENABLED=true
+      # Kafka consume ceiling, raised above the workload peak for the same reason
+      # the gateway's publish admission is (METHODOLOGY §4). The stock default is
+      # 1,000 msg/s, which sits UNDER the ×8 burst peak of ~1,920 msg/s: the
+      # publisher is admitted at the gateway and the consumer then drops the
+      # excess, so acknowledged publishes never reach subscribers and the
+      # zero-loss checker reports holes confined to the burst windows.
+      - WS_MAX_KAFKA_RATE=2500
       # Pod identity must differ per replica for the connections registry; the
       # hostname is unique per replica, so derive it from that.
       - WS_POD_ID={{.Task.Name}}

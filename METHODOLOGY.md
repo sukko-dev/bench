@@ -99,15 +99,30 @@ subscriber is delivering" rule was tried and rejected: with subscribers
 pre-established it computes to zero, measuring a readiness condition the harness
 design already guarantees.
 
-**Disclosed deviation from stock defaults — publish admission.** The gateway's
-default publish rate limit is 10 msg/s per authenticated principal
-(`GATEWAY_PUBLISH_RATE_LIMIT`) — an anti-abuse admission control, not pipeline
-capacity — and the whole bench publishes as one principal. The compose stack
-raises it to 2,500 msg/s (burst 5,000): above the workload's peak, so admission
-never shapes the measured pipeline. This is ordinary operator env configuration
-available on every edition — a Community operator reproduces it verbatim — and
-it is the benchmark's ONLY deviation from stock server configuration. The
-driver additionally honours any 429's `Retry-After` on its retry path, so an
+**Disclosed deviations from stock defaults — the two rate ceilings.** Both are
+admission controls rather than pipeline capacity, and both sit below the
+workload's ~1,920 msg/s peak at their stock values. The compose stack raises
+each above that peak so neither shapes the measured pipeline. They are the
+benchmark's only deviations from stock server configuration, both are ordinary
+operator env configuration available on every edition, and a Community operator
+reproduces them verbatim.
+
+1. **Publish admission** — the gateway's default publish rate limit is 10 msg/s
+   per authenticated principal (`GATEWAY_PUBLISH_RATE_LIMIT`), an anti-abuse
+   control, and the whole bench publishes as one principal. Raised to 2,500
+   msg/s (burst 5,000).
+2. **Kafka consume ceiling** — ws-server's `WS_MAX_KAFKA_RATE` defaults to 1,000
+   msg/s. Raised to 2,500 msg/s. Leaving it at the default while raising
+   admission is the more dangerous of the two misconfigurations, because the two
+   limits sit on *opposite ends of the same pipeline*: the publisher is admitted
+   at the gateway and acknowledged, then the consumer deliberately drops the
+   excess, so the loss is invisible to the publisher and appears only as holes
+   confined to the burst windows. Measured on a stock-default run: 3,472 holes
+   against 53,280 acknowledged publishes, with p99 latency degraded from ~15 ms
+   to 1.27 s. The drops are logged and counted (`ws_kafka_messages_dropped_total`)
+   — the platform is behaving exactly as configured; the configuration was wrong.
+
+The driver additionally honours any 429's `Retry-After` on its retry path, so an
 incidental rejection never turns into an immediate-retry storm.
 
 ## 5. Fault matrix
