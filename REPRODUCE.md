@@ -88,7 +88,7 @@ harness end to end without the pinned machine.
 
 ## Publishing official numbers
 
-The compose stack pins the **released, digest-addressed v1.0.1 images**
+The compose stack pins the **released, digest-addressed v1.0.2 images**
 (ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
 digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
 under `results/<date>-<version>/`, and record the machine slug + `sysctl`
@@ -109,8 +109,9 @@ stack). What it established:
   never connected and every token failed as unverifiable.
 
 **Open before any published number:** nothing — the harness defects are closed, and
-the compose stack is pinned to `v1.0.1`, the first release carrying the
-routing-rules and Retry-After changes. What remains before official numbers is
+the compose stack is pinned to `v1.0.2`, which carries the routing-rules and
+Retry-After changes plus the fix for the Valkey-outage subscription blackout
+this matrix found. What remains before official numbers is
 operational: rent the pinned VM and run the fault matrix.
 
 **Closed** (2026-09-12): the publisher/checker accounting fault, the vacuous-pass
@@ -132,56 +133,7 @@ impossible. Publish admission is raised above the workload peak in the compose s
 the disclosed deviation in METHODOLOGY.md §4. The `odds-burst` scenario is sized inside
 the Community 500-connection cap (120×4 = 480).
 
-## Publishing official numbers
-
-The compose stack pins the **released, digest-addressed v1.0.1 images**
-(ADR-0012) — `ghcr.io/sukko-dev/sukko-{server,gateway,provisioning}` by SHA256
-digest, overridable via `SUKKO_IMAGE_*` for a later release. Commit `OUT/`
-under `results/<date>-<version>/`, and record the machine slug + `sysctl`
-values in the run's notes.
-
-## Status
-
-The Go driver and its analysis are unit-tested and `-race`-clean.
-
-**First live boot completed 2026-09-11** (source-built images, unlicensed Community
-stack). What it established:
-
-- The harness runs end to end: provision → subscribe → publish → fan-out → receive
-  → checker, with healthy latency (p50 ~16 ms, p99 ~33 ms on a laptop).
-- `bootstrap.sh` drift is corrected and the corrections are recorded in the script.
-- **Two blocking stack-config bugs were found and fixed** in `compose/docker-compose.yml`:
-  the gateway had no `PROVISIONING_GRPC_ADDR`, so its key/API-key/revocation streams
-  never connected and every token failed as unverifiable.
-
-**Open before any published number:**
-
-1. **The driver outruns the gateway's publish rate limit, and miscounts the result.**
-   Root-caused 2026-09-11 from `gateway_rest_publish_total`: of ~18,300 attempts only
-   **796 succeeded**; ~10,900 were `rate_limited` (429) and the rest `forbidden`
-   (pre-setup). The two smoke runs delivered 792 + 794 = 1586 receives against
-   796 accepted publishes × 2 subscribers per channel = 1592 expected — i.e. the
-   platform delivered essentially **everything it accepted**. There is no delivery
-   loss. Two fixes are needed on the harness side:
-   - Pace the publisher to the gateway's per-tenant publish limit (or raise the limit
-     deliberately for the bench tenant and disclose it in METHODOLOGY).
-   - **Stop counting rejected publishes as expected deliveries.** `pub.Run` sets
-     `m.Published[ch] = seq` BEFORE dispatch, so it records sequence numbers *issued*;
-     sends that never confirm land in `m.Unconfirmed` and the checker never consults it.
-     `check.Run` then requires every subscriber to have received `1..Published[ch]`,
-     turning each rejected publish into a Hole for every subscriber. Either exclude
-     `Unconfirmed` from the coverage requirement, or only advance `Published` on
-     confirmation.
-
-2. **Vacuous-pass bug in the checker.** A run that delivered ZERO messages reported
-   `pass=true, holes=0`. Zero delivered must fail — otherwise a totally broken run
-   ships as a green result.
-
-3. **The `--warmup` flag is inert.** `cmd/bench/main.go` parses it and discards it
-   (`_ = *warmup`); the "analysis step" that would apply the window does not exist.
-   Either implement the windowing or remove the flag — as it stands it silently
-   promises an exclusion that never happens.
-
-Note for (1): a Hole is a *contiguous range* of missing seqs per (subscriber, channel),
-not one missing message — so the headline "454 holes" counted gap-ranges produced by a
-single systemic cause, not 454 independent faults.
+**Reading the numbers:** a *hole* is a **contiguous range** of missing seqs for one
+(subscriber, channel) pair, not a single missing message. A systemic outage that
+darkens every subscriber therefore reports one hole per subscriber-channel pair —
+480 holes for the 120×4 odds-burst scenario — rather than the message count.
