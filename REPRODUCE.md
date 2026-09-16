@@ -40,8 +40,29 @@ sudo sysctl -w net.core.somaxconn=4096             # connect-ramp backlog
 ```sh
 task stack-up                       # boot: postgres, valkey, redpanda,
                                     # provisioning, 2× ws-server, gateway
+
+# DISCARD the first run after stack-up — see below. Its output is not a result.
+task bench SCENARIO=scenarios/odds-burst.toml OUT=/tmp/discard-warmup
+
 task bench SCENARIO=scenarios/odds-burst.toml OUT=results/$(date -u +%Y%m%dT%H%M%SZ)
 ```
+
+**The first run after `stack-up` MUST be discarded.** The scenario's `warmup`
+covers pipeline cold-start, not *container* cold-start, and a freshly booted
+stack is materially slower. Measured on the reference machine, same commit and
+same configuration:
+
+| | p50 | p99 | p999 | max |
+|---|---|---|---|---|
+| first run after `stack-up` | 27.8 ms | **879 ms** | 2.81 s | 2.82 s |
+| warm runs (×3, consecutive) | 27.9 ms | **49.4 ms** | 54.3 ms | 58.0 ms |
+
+A 17× difference in p99 with nothing else changed. The warm runs agree with each
+other to within 0.8% on p99, so once the stack is warm the measurement is stable
+and a single run is representative; the cold run is simply not a measurement of
+the software. Publishing one would understate the platform by more than an order
+of magnitude, and a reproducer who runs the recipe once and stops would conclude
+the opposite of what the artifact claims.
 
 `task bench` provisions (bootstrap.sh), builds the driver, runs the scenario,
 and writes `result.json` + raw per-subscriber receive logs under `OUT/`.
