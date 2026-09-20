@@ -136,6 +136,25 @@ type Result struct {
 	// so a failing artifact carries its own evidence — a bare count cannot be triaged.
 	HolesSample []string `json:"holes_sample,omitempty"`
 
+	// Phantoms (seq above published — impossible delivery) and Misrouted
+	// (record on an unsubscribed channel) are integrity violations; samples
+	// mirror HolesSample so a failing artifact carries its own evidence.
+	Phantoms        int      `json:"phantoms,omitempty"`
+	Misrouted       int      `json:"misrouted,omitempty"`
+	PhantomsSample  []string `json:"phantoms_sample,omitempty"`
+	MisroutedSample []string `json:"misrouted_sample,omitempty"`
+
+	// Events aggregates every subscriber recovery event by kind (resume_gap,
+	// replay_requested, replay_completed, replay_truncated, …) across the run;
+	// Subscribers carries the per-subscriber rows the aggregate is built from,
+	// so replay outcomes can be partitioned and correlated with holes.
+	// RecoveryFault names why the run failed on recovery quality (truncated
+	// replays) even when the seq ledger closed — the recovery analogue of
+	// HarnessFault.
+	Events        map[string]int       `json:"events,omitempty"`
+	Subscribers   []SubscriberActivity `json:"subscribers,omitempty"`
+	RecoveryFault string               `json:"recovery_fault,omitempty"`
+
 	Recovery []RecoveryStat `json:"recovery,omitempty"`
 }
 

@@ -139,6 +139,15 @@ func run() int {
 	// guard fails the run when too little of the offered load was acknowledged for
 	// that verdict to mean anything (report.HarnessSound).
 	harnessOK, harnessFault := report.HarnessSound(res.Check.ConfirmedPublished, res.Check.UnconfirmedPublished)
+	// Recovery events reach the artifact so a run's recovery behavior is
+	// inspectable after the fact; RecoverySound fails the run on truncated
+	// replays — under-recovery must never hide behind a closed seq ledger.
+	subEvents := make([]report.SubEvents, len(res.Subs))
+	for i, sr := range res.Subs {
+		subEvents[i] = report.SubEvents{ID: sr.ID, Events: sr.Events}
+	}
+	eventCounts, activity := report.BuildActivity(subEvents, res.Check.Holes, t0)
+	recoveryOK, recoveryFault := report.RecoverySound(eventCounts)
 	// Connection establishment is already outside the measured window: scenario.Run
 	// starts EVERY subscriber before the publisher, at any connection count. The only
 	// transient left is pipeline cold-start (first produce/consume, cold caches),
@@ -151,13 +160,18 @@ func run() int {
 	result := report.Result{
 		RunID:                id,
 		Scenario:             filepath.Base(*scenarioPath),
-		Pass:                 res.Check.Pass() && harnessOK,
+		Pass:                 res.Check.Pass() && harnessOK && recoveryOK,
 		Latency:              latency,
 		Holes:                len(res.Check.Holes),
+		Phantoms:             len(res.Check.Phantoms),
+		Misrouted:            len(res.Check.Misrouted),
 		ConfirmedPublishes:   res.Check.ConfirmedPublished,
 		UnconfirmedPublishes: res.Check.UnconfirmedPublished,
 		HarnessFault:         harnessFault,
 		WarmupExcluded:       warmupExcluded,
+		Events:               eventCounts,
+		Subscribers:          activity,
+		RecoveryFault:        recoveryFault,
 	}
 	if cfg.Warmup > 0 {
 		result.Warmup = cfg.Warmup.String()
@@ -168,6 +182,20 @@ func run() int {
 		}
 		result.HolesSample = append(result.HolesSample,
 			fmt.Sprintf("%s/%s seqs %d-%d", h.Subscriber, h.Channel, h.FromSeq, h.ToSeq))
+	}
+	for i, d := range res.Check.Phantoms {
+		if i >= holesSampleMax {
+			break
+		}
+		result.PhantomsSample = append(result.PhantomsSample,
+			fmt.Sprintf("%s/%s seq %d", d.Subscriber, d.Channel, d.Seq))
+	}
+	for i, d := range res.Check.Misrouted {
+		if i >= holesSampleMax {
+			break
+		}
+		result.MisroutedSample = append(result.MisroutedSample,
+			fmt.Sprintf("%s/%s seq %d", d.Subscriber, d.Channel, d.Seq))
 	}
 
 	resultPath := filepath.Join(*outDir, "result.json")
@@ -189,6 +217,9 @@ func run() int {
 		result.Latency.P50, result.Latency.P99, result.Holes, resultPath)
 	if harnessFault != "" {
 		fmt.Fprintf(os.Stderr, "bench: HARNESS FAULT: %s\n", harnessFault)
+	}
+	if recoveryFault != "" {
+		fmt.Fprintf(os.Stderr, "bench: RECOVERY FAULT: %s\n", recoveryFault)
 	}
 	if !result.Pass {
 		return 1
