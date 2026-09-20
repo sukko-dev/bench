@@ -28,7 +28,9 @@ The Go driver, its open-loop scheduler and its zero-loss checker are complete
 and unit-tested (`task test`, race-enabled). The stack boots from the released,
 digest-pinned public images and a full run completes end to end.
 
-**No number is published yet.** The remaining blocker is listed under "Open
+The **fault-matrix findings** — three real data-integrity bugs the harness caught
+and the platform fixed in v1.0.3 — are in [FINDINGS.md](FINDINGS.md). The latency
+headline is what remains: the blocker is listed under "Open
 before any published number" in [REPRODUCE.md](REPRODUCE.md); the accounting
 faults that once let the checker confuse harness back-pressure with platform
 loss are closed.
