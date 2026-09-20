@@ -2,6 +2,7 @@ package sub
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -130,4 +131,65 @@ func (fc *fakeConn) frameOfType(typ string) map[string]any {
 		}
 	}
 	return nil
+}
+
+// sendMessageAt delivers one broadcast message frame with an explicit server
+// timestamp — the resume-gap tests anchor on envelope ts.
+func (fc *fakeConn) sendMessageAt(ts int64, seq int, channel string, data json.RawMessage, pos, mid string) {
+	frame := map[string]any{
+		"type": "message", "seq": seq, "ts": ts,
+		"channel": channel, "data": data, "mid": mid,
+	}
+	if pos != "" {
+		frame["pos"] = pos
+	}
+	fc.send(frame)
+}
+
+// sendGap delivers a gap frame. For reason "resume" the extent is unknown:
+// from_seq/to_seq are 0 and last_pos is empty; ts is when the gap began.
+func (fc *fakeConn) sendGap(channel, reason, lastPos string, ts int64) {
+	fc.send(map[string]any{
+		"type": "gap", "channel": channel,
+		"from_seq": 0, "to_seq": 0,
+		"last_pos": lastPos, "reason": reason, "ts": ts,
+	})
+}
+
+// posAt builds a wire pos in the (partition+1)-offset format.
+func posAt(offset int) string { return fmt.Sprintf("1-%d", offset) }
+
+// midAt builds a unique mid for bulk sends.
+func midAt(i int) string { return fmt.Sprintf("mid-%d", i) }
+
+// sendReplayComplete delivers the server's end-of-replay signal. truncated is
+// only present on the wire when true (omitempty on the server envelope).
+func (fc *fakeConn) sendReplayComplete(channel string, messagesReplayed int, truncated bool) {
+	frame := map[string]any{
+		"type": "replay_complete", "channel": channel,
+		"messages_replayed": messagesReplayed,
+	}
+	if truncated {
+		frame["truncated"] = true
+	}
+	fc.send(frame)
+}
+
+// sendError delivers the server's generic error envelope — the frame replay
+// rejections and failures arrive as (type "error", never "replay_error").
+func (fc *fakeConn) sendError(channel, code, message string) {
+	fc.send(map[string]any{"type": "error", "channel": channel, "code": code, "message": message})
+}
+
+// framesOfType returns every frame with the given type, in send order.
+func (fc *fakeConn) framesOfType(typ string) []map[string]any {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+	var out []map[string]any
+	for _, f := range fc.frames {
+		if f["type"] == typ {
+			out = append(out, f)
+		}
+	}
+	return out
 }
