@@ -53,7 +53,7 @@ sukko rules channels set --api-url "$PROV_URL" --tenant "$TENANT" --file "$CHRUL
 # rejected 409 PUBLISH_NOT_ROUTABLE (#179 removed the convention fallback).
 # Ungated on every edition since ADR-0014; Community's cap is 10 rules.
 sukko rules routing add --api-url "$PROV_URL" --tenant "$TENANT" \
-  --pattern "**" --topics default --priority 1 || true
+  --pattern "**" --ingress-topic default --priority 1 || true
 
 # 4. Tenant JWT signing keypair — generates, registers the public half, and
 # saves the private half under the CLI key store keyed by --key-id.
