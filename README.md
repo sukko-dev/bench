@@ -29,8 +29,8 @@ and unit-tested (`task test`, race-enabled). The stack boots from the released,
 digest-pinned public images and a full run completes end to end.
 
 The **fault-matrix findings** — four real data-integrity bugs the harness caught
-and the platform fixed in v1.0.3 and v1.0.4 — are in [FINDINGS.md](FINDINGS.md). The latency
-headline is what remains: the blocker is listed under "Open
-before any published number" in [REPRODUCE.md](REPRODUCE.md); the accounting
-faults that once let the checker confuse harness back-pressure with platform
-loss are closed.
+and the platform fixed in v1.0.3 and v1.0.4 — are in [FINDINGS.md](FINDINGS.md),
+alongside the **latency headline**: ~28 ms median, ~57 ms p999 under ×8 burst on
+the released v1.0.4 images, with the driver at ~13.5 % CPU (so the number is the
+platform's, not the load generator's). The accounting faults that once let the
+checker confuse harness back-pressure with platform loss are closed.

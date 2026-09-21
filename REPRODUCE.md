@@ -108,11 +108,12 @@ stack). What it established:
   the gateway had no `PROVISIONING_GRPC_ADDR`, so its key/API-key/revocation streams
   never connected and every token failed as unverifiable.
 
-**Open before any published number:** nothing — the harness defects are closed, and
-the compose stack is pinned to `v1.0.2`, which carries the routing-rules and
-Retry-After changes plus the fix for the Valkey-outage subscription blackout
-this matrix found. What remains before official numbers is
-operational: rent the pinned VM and run the fault matrix.
+**Open before any published number:** nothing — the harness defects are closed and
+the numbers are published. The compose stack is pinned to the **v1.0.4** released
+digests, which carry the four data-integrity fixes this matrix found (ADR-0019/
+0020/0021/0022). The zero-loss fault matrix and the latency headline (~28 ms
+median, ~57 ms p999 under burst; driver ~13.5 % CPU) were run on the pinned GCP
+`c2-standard-8` VM and are recorded in [FINDINGS.md](FINDINGS.md).
 
 **Closed** (2026-09-12): the publisher/checker accounting fault, the vacuous-pass
 fault, and the inert warmup flag — `warmup` now lives in the scenario TOML (excluded
