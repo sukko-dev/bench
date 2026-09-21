@@ -5,8 +5,8 @@ let the zero-loss checker decide whether the platform lost messages. Run against
 the released, digest-pinned images, that matrix surfaced **four real
 data-integrity bugs** in the platform — each root-caused and fixed. The fixes
 ship in **v1.0.3** and **v1.0.4** (the digests pinned in [`compose/docker-compose.yml`](compose/docker-compose.yml)).
-This page is what the harness actually found; the latency headline is separate
-and still pending the pinned-VM run (see [Status](README.md)).
+This page is what the harness actually found — the zero-loss fault matrix below,
+and the [latency headline](#latency--released-v104) under burst.
 
 ## Bugs the matrix found (fixed in v1.0.3 / v1.0.4)
 
@@ -34,3 +34,32 @@ reproduce on any dedicated 8-vCPU box, not only the pinned VM. Reproduce with th
 recipe in [REPRODUCE.md](REPRODUCE.md): `task stack-up`, discard the first run,
 then `task bench` while scheduling `task fault-<valkey|redpanda|ws>` into the
 second burst window.
+
+## Latency — released v1.0.4
+
+End-to-end delivery latency (publish → client arrival) under the odds-shaped
+burst workload (`scenarios/odds-burst.toml`: 120 channels × 4 subscribers,
+~240 msg/s baseline with ×8 bursts), no fault. Measured **open-loop** (Gil Tene /
+wrk2 style — each message's intended send time is fixed by the schedule, so a
+slow send lands in the recorded latency instead of a shifted clock; see
+[METHODOLOGY.md](METHODOLOGY.md) §2). Warm: the first run after boot is discarded
+(pipeline cold-start), then three consecutive warm runs. Each run is 211,200
+per-delivery samples across 480 subscribers, `negative=0` (no pre-arrival skew).
+
+| warm run | p50 | p99 | p999 | max | driver CPU |
+|---|---|---|---|---|---|
+| 1 | 28.5 ms | 49.9 ms | 56.4 ms | 61.2 ms | 13.5 % |
+| 2 | 28.7 ms | 51.6 ms | 57.0 ms | 62.4 ms | 13.5 % |
+| 3 | 28.8 ms | 50.8 ms | 56.5 ms | 61.1 ms | 13.5 % |
+
+**~28 ms median, ~57 ms p999 — under ×8 burst, on the released v1.0.4 images.**
+The driver held ~13.5 % of the box's CPU across each run, so these measure the
+platform, not the load generator (METHODOLOGY §2, driver honesty — the
+`driver_cpu` field is in every `result.json`).
+
+**Disclosures.** Single pinned, dedicated-CPU VM (GCP `c2-standard-8`, 8 vCPU);
+driver and stack are co-located, so results **exclude WAN latency** — a real
+deployment adds its RTT on top of every number here (METHODOLOGY §3). The
+first-run (cold) tail is much higher (a one-off pipeline warm-up); discarding it
+is part of the recipe. Reproduce: `task stack-up`, discard the first
+`task bench SCENARIO=scenarios/odds-burst.toml`, then three more warm.
