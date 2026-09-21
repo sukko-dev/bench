@@ -24,6 +24,28 @@ type Latency struct {
 	Max      time.Duration `json:"max"`
 }
 
+// DriverCPU is the load generator's own CPU consumption for the run. It is
+// reported per run (METHODOLOGY §2, "Driver honesty") so a reader can confirm
+// the driver was not the bottleneck: on a co-located single-VM harness, a
+// driver pinned near the box's core budget would cap throughput and inflate
+// latency, and the numbers would measure the driver, not the platform.
+type DriverCPU struct {
+	UserSeconds float64 `json:"user_s"`       // user-mode CPU seconds consumed by the driver process
+	SysSeconds  float64 `json:"sys_s"`        // kernel-mode CPU seconds consumed by the driver process
+	PercentWall float64 `json:"percent_wall"` // (user+sys)/wall × 100; may exceed 100 across cores
+}
+
+// NewDriverCPU derives the driver-honesty metric from the user/system CPU time
+// the driver consumed and the run's wall-clock duration. wall<=0 yields 0% (no
+// divide) rather than a bogus ratio.
+func NewDriverCPU(user, sys, wall time.Duration) DriverCPU {
+	d := DriverCPU{UserSeconds: user.Seconds(), SysSeconds: sys.Seconds()}
+	if wall > 0 {
+		d.PercentWall = (user + sys).Seconds() / wall.Seconds() * 100
+	}
+	return d
+}
+
 // LatenciesWindowed computes the distribution over records INTENDED at or after
 // cutoffUnixNano, returning the count excluded as warmup. Windowing keys on the
 // intended time (the open-loop ground truth), not the arrival time — a
@@ -117,7 +139,10 @@ type Result struct {
 	Scenario string  `json:"scenario"`
 	Pass     bool    `json:"pass"`
 	Latency  Latency `json:"latency"`
-	Holes    int     `json:"holes"`
+	// DriverCPU discloses the load generator's own CPU use for the run so a
+	// reader can confirm the driver was not the bottleneck (METHODOLOGY §2).
+	DriverCPU DriverCPU `json:"driver_cpu"`
+	Holes     int       `json:"holes"`
 
 	// Publish accounting: the loss verdict covers Confirmed only, so these make
 	// its span visible instead of hidden. HarnessFault names why a run failed

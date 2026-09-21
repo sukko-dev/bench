@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/sukko-dev/bench/internal/config"
@@ -157,11 +158,20 @@ func run() int {
 		cutoff = t0.Add(cfg.Warmup).UnixNano()
 	}
 	latency, warmupExcluded := report.LatenciesWindowed(all, cutoff)
+	// Driver-honesty metric (METHODOLOGY §2): the driver's own CPU over the run's
+	// wall clock, so a reader can confirm the load generator was not the
+	// bottleneck. RUSAGE_SELF accumulates over the process; wall is since t0.
+	var ru syscall.Rusage
+	_ = syscall.Getrusage(syscall.RUSAGE_SELF, &ru) //nolint:errcheck // best-effort disclosure; a failed getrusage yields 0s, not a run failure
+	driverCPU := report.NewDriverCPU(
+		time.Duration(ru.Utime.Nano()), time.Duration(ru.Stime.Nano()), time.Since(t0))
+
 	result := report.Result{
 		RunID:                id,
 		Scenario:             filepath.Base(*scenarioPath),
 		Pass:                 res.Check.Pass() && harnessOK && recoveryOK,
 		Latency:              latency,
+		DriverCPU:            driverCPU,
 		Holes:                len(res.Check.Holes),
 		Phantoms:             len(res.Check.Phantoms),
 		Misrouted:            len(res.Check.Misrouted),
@@ -211,10 +221,10 @@ func run() int {
 		return 2
 	}
 
-	fmt.Printf("bench: run %s — pass=%v confirmed=%d unconfirmed=%d delivered=%d warmup=%v(-%d) p50=%v p99=%v holes=%d → %s\n",
+	fmt.Printf("bench: run %s — pass=%v confirmed=%d unconfirmed=%d delivered=%d warmup=%v(-%d) p50=%v p99=%v holes=%d driver_cpu=%.1f%% → %s\n",
 		id, result.Pass, result.ConfirmedPublishes, result.UnconfirmedPublishes,
 		result.Latency.Count, cfg.Warmup, warmupExcluded,
-		result.Latency.P50, result.Latency.P99, result.Holes, resultPath)
+		result.Latency.P50, result.Latency.P99, result.Holes, result.DriverCPU.PercentWall, resultPath)
 	if harnessFault != "" {
 		fmt.Fprintf(os.Stderr, "bench: HARNESS FAULT: %s\n", harnessFault)
 	}
