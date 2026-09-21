@@ -2,21 +2,22 @@
 
 The benchmark's job is failure: kill each infrastructure dependency mid-burst and
 let the zero-loss checker decide whether the platform lost messages. Run against
-the released, digest-pinned images, that matrix surfaced **three real
+the released, digest-pinned images, that matrix surfaced **four real
 data-integrity bugs** in the platform — each root-caused and fixed. The fixes
-ship in **v1.0.3** (the digests pinned in [`compose/docker-compose.yml`](compose/docker-compose.yml)).
+ship in **v1.0.3** and **v1.0.4** (the digests pinned in [`compose/docker-compose.yml`](compose/docker-compose.yml)).
 This page is what the harness actually found; the latency headline is separate
 and still pending the pinned-VM run (see [Status](README.md)).
 
-## Bugs the matrix found (all fixed in v1.0.3)
+## Bugs the matrix found (fixed in v1.0.3 / v1.0.4)
 
 | # | Bug | Exposed by | Fix |
 |---|-----|-----------|-----|
 | 1 | **At-least-once broken on a broadcast-bus outage** — the Kafka consumer marked offsets for commit after a *void* broadcast call, so while Valkey was down it committed past records it never delivered. Killing Redpanda lost nothing (the consumer can't advance past unread records); killing Valkey lost them permanently. | `fault-valkey` | ADR-0019 · server #6 |
 | 2 | **Cross-tenant channel-isolation leak on reconnect** — reconnect replay filtered by the client's live subscription set but *skipped the filter when that set was empty*, and the protocol sends `reconnect` before `subscribe`, so it was always empty. With many channels on one topic, a reconnect replayed **every channel on the topic** — cross-tenant reachable (a client could name another tenant's channel in `last_pos`). §IX isolation violation. | `fault-ws` | ADR-0020 · server #7 |
 | 3 | **Replay dropped the recovery data it was meant to deliver** — reconnect replay ran each record through the *live* consume path's rate limiter and CPU brake, silently dropping the failover burst under load (and draining the live consume budget). | `fault-ws` | ADR-0021 · server #8 |
+| 4 | **Consume-loop rate limiter dropped-and-committed-past over-rate records** — when a partition is reassigned after an owner `SIGKILL`, the survivor drains the accumulated backlog faster than `WS_MAX_KAFKA_RATE`; the limiter shed the excess *and marked it committed*, permanently losing it (~700 holes on a deterministic owner-kill). Now paces (bounded-blocks) instead of dropping. Lowering the session timeout was tried and rejected — it barely moved the loss. | `fault-ws` | ADR-0022 · server #9 (v1.0.4) |
 
-## Fault matrix — released v1.0.3
+## Fault matrix — released v1.0.4
 
 Killed mid-burst (second burst window of `scenarios/odds-burst.toml`), then the
 dependency restarted for the recovery window. Zero-loss = the checker found no
@@ -26,7 +27,7 @@ hole in any subscriber's per-channel sequence over the whole run.
 |---|---|---|
 | **Redpanda** (Kafka) | ✅ `holes=0` | consumer cannot advance past unread records; replays on recovery |
 | **Valkey** (broadcast bus) | ✅ `holes=0` | at-least-once restored — bug 1 |
-| **ws-server** (replica) | ✅ `misrouted=0`, and `holes=0` on **fast** failover | isolation closed (bug 2) and recovery restored (bug 3). **Open item:** when the Kafka consumer-group rebalance takes the full session-timeout (~32 s — a hard `SIGKILL` of the replica that *owns* the client's partition sends no `LeaveGroup`, so the group waits the timeout before reassigning), a residual gap remains: the client's single reconnect-replay fires immediately but the survivor doesn't serve those partitions until the stall clears, and messages published during the stall fall between replay and live-delivery. Being closed by tightening the consumer session timeout so the stall stays short. |
+| **ws-server** (replica) | ✅ `misrouted=0`, `holes=0` — incl. the slow rebalance | isolation closed (bug 2), recovery restored (bug 3), and the slow-rebalance residual closed (bug 4). Verified with a **deterministic owner-kill** (kill the replica that owns the client's partition, so the group waits the full ~32 s session-timeout before reassigning): `holes=0` across `clean`, `fault-valkey`, `fault-redpanda`, and two owner-kill runs on the released v1.0.4 images. The residual was the consume-loop rate limiter dropping the reassignment catch-up backlog (bug 4), not the session-timeout — lowering the timeout was tried and did not close it. |
 
 These are **correctness** (zero-loss) results — environment-independent, so they
 reproduce on any dedicated 8-vCPU box, not only the pinned VM. Reproduce with the

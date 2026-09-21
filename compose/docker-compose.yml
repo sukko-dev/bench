@@ -51,7 +51,7 @@ services:
       retries: 20
 
   provisioning:
-    image: ${SUKKO_IMAGE_PROVISIONING:-ghcr.io/sukko-dev/sukko-provisioning@sha256:1f9519e435702fecc73d05b3866092cb08845bcf6142f28282a258dca08c83aa}
+    image: ${SUKKO_IMAGE_PROVISIONING:-ghcr.io/sukko-dev/sukko-provisioning@sha256:8beb0154675e169b4e0bcb4699bbf2f9209a728f3d0e692a20916aa31291f2e3}
     # REST API exposed so bootstrap.sh can provision the bench tenant + token
     # from the host. Not on the message path — the driver only talks to the gateway.
     ports:
@@ -74,7 +74,7 @@ services:
 
   # No host ports → scalable. `docker compose up --scale ws-server=2`.
   ws-server:
-    image: ${SUKKO_IMAGE_SERVER:-ghcr.io/sukko-dev/sukko-server@sha256:54556a59a26f61e3244787b4053cfb5e34515f72c9ec32002f428540247a1f54}
+    image: ${SUKKO_IMAGE_SERVER:-ghcr.io/sukko-dev/sukko-server@sha256:560f234b2f2aa4c476a7db0c9308da64f16e4496b9d89dab90afcd26adbdeb4f}
     environment:
       - VALKEY_ADDRS=valkey:6379
       - PROVISIONING_GRPC_ADDR=provisioning:9090
@@ -105,7 +105,7 @@ services:
       start_period: 10s
 
   ws-gateway:
-    image: ${SUKKO_IMAGE_GATEWAY:-ghcr.io/sukko-dev/sukko-gateway@sha256:3c7941f4632d77512b82a799ff18383ea2f96383b687e077b31e3b36e90bd0cb}
+    image: ${SUKKO_IMAGE_GATEWAY:-ghcr.io/sukko-dev/sukko-gateway@sha256:5872a69d2be6a63774c3053806e0256509fa0f3085e68c314b84b8a3e44cdf24}
     ports:
       - "3000:3000"
     environment:
