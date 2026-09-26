@@ -200,6 +200,50 @@ func (l Latency) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON is the inverse of MarshalJSON: the p50/p99/p999/max fields are duration STRINGS
+// on disk (e.g. "28.5ms"), so the default int-nanoseconds unmarshal would fail. Symmetry lets a
+// reader (e.g. the fault-matrix runner) load a result.json back into a Result. An empty or absent
+// field decodes to 0.
+func (l *Latency) UnmarshalJSON(b []byte) error {
+	type alias struct {
+		Count    int    `json:"count"`
+		Negative int    `json:"negative"`
+		P50      string `json:"p50"`
+		P99      string `json:"p99"`
+		P999     string `json:"p999"`
+		Max      string `json:"max"`
+	}
+	var a alias
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	parse := func(name, v string) (time.Duration, error) {
+		if v == "" {
+			return 0, nil
+		}
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return 0, fmt.Errorf("latency %s: %w", name, err)
+		}
+		return d, nil
+	}
+	var err error
+	l.Count, l.Negative = a.Count, a.Negative
+	if l.P50, err = parse("p50", a.P50); err != nil {
+		return err
+	}
+	if l.P99, err = parse("p99", a.P99); err != nil {
+		return err
+	}
+	if l.P999, err = parse("p999", a.P999); err != nil {
+		return err
+	}
+	if l.Max, err = parse("max", a.Max); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Write emits the result as indented JSON.
 func Write(w io.Writer, r Result) error {
 	enc := json.NewEncoder(w)
