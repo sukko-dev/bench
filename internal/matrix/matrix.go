@@ -126,3 +126,21 @@ func Run(faults []string, n int, t Thresholds, run RunFunc) Report {
 	}
 	return rep
 }
+
+// FaultDelay returns how long after a run starts the fault should fire: into the SECOND burst
+// window (its start_fraction × the run duration, plus an offset so the kill lands inside the
+// burst rather than exactly at its edge). This deterministically replaces the human who used to
+// run the fault script from a second shell at "about the right moment" (ADR-0001).
+func FaultDelay(runDuration time.Duration, secondBurstStartFraction float64, offset time.Duration) time.Duration {
+	return time.Duration(float64(runDuration)*secondBurstStartFraction) + offset
+}
+
+// FaultLandsInBurst reports whether a fault fired at delay after the run starts lands inside the
+// burst window [burstStart, burstStart+burstDuration). A fault injected before the window (or after
+// it — or after the run has ended entirely) is fired at the wrong moment: the measured load never
+// meets the fault, so the run can pass with the failure mode untested. The runner rejects such a
+// configuration up front rather than shipping a silently-green gate (ADR-0001: "a gate that lies is
+// worse than no gate").
+func FaultLandsInBurst(delay, burstStart, burstDuration time.Duration) bool {
+	return delay >= burstStart && delay < burstStart+burstDuration
+}

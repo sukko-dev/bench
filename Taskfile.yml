@@ -100,3 +100,17 @@ tasks:
     desc: Kill Redpanda mid-run
     cmds:
       - COMPOSE_PROJECT_NAME={{.FAULT_PROJECT}} ./faults/kill-redpanda.sh
+
+  matrix:
+    desc: Run the fault matrix as a regression gate — boot, run each fault × N, aggregate, tear down
+    vars:
+      OUT: '{{.OUT | default "matrix-results"}}'
+    cmds:
+      - task: stack-up
+      - defer: { task: stack-down }
+      - task: bootstrap
+      - go build -o bin/bench ./cmd/bench
+      - go build -o bin/matrix ./cmd/matrix
+      - |
+        set -a; source .bench.env; set +a
+        ./bin/matrix --scenario "{{.SCENARIO}}" --out "{{.OUT}}" {{.MATRIX_ARGS}}
