@@ -84,7 +84,7 @@ func contains(reasons []string, sub string) bool {
 func TestRunAllClean(t *testing.T) {
 	calls := 0
 	run := func(_ string, _ int) (report.Result, error) { calls++; return clean(), nil }
-	rep := Run([]string{CleanFault, "valkey", "redpanda"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "valkey", "redpanda"}, 3, ceilings, nil, run)
 	if !rep.OK {
 		t.Fatalf("report not OK: %+v", rep)
 	}
@@ -108,7 +108,7 @@ func TestRunFlakeRecoversOnRetry(t *testing.T) {
 		}
 		return clean(), nil
 	}
-	rep := Run([]string{CleanFault, "valkey"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "valkey"}, 3, ceilings, nil, run)
 	if !rep.OK {
 		t.Fatalf("report should be OK — valkey recovered on retry: %+v", rep)
 	}
@@ -134,7 +134,7 @@ func TestRunReproducedRegressionFails(t *testing.T) {
 		}
 		return clean(), nil
 	}
-	rep := Run([]string{CleanFault, "redpanda"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "redpanda"}, 3, ceilings, nil, run)
 	if rep.OK {
 		t.Fatalf("report should FAIL — redpanda reproduced data loss")
 	}
@@ -154,13 +154,13 @@ func TestRunLatencyGatedOnCleanRunOnly(t *testing.T) {
 	run := func(_ string, _ int) (report.Result, error) { return bigTail, nil }
 
 	// valkey (a fault) with the big tail → OK: latency is not gated for a fault run.
-	rep := Run([]string{"valkey"}, 2, ceilings, run)
+	rep := Run([]string{"valkey"}, 2, ceilings, nil, run)
 	if !rep.OK {
 		t.Errorf("fault run with an outage tail but zero loss must PASS: %+v", rep.Faults[0].Runs)
 	}
 
 	// The same result under the clean run → FAIL on the latency ceiling.
-	rep = Run([]string{CleanFault}, 2, ceilings, run)
+	rep = Run([]string{CleanFault}, 2, ceilings, nil, run)
 	if rep.OK {
 		t.Fatalf("clean run with a 6.4s tail must FAIL the latency ceiling")
 	}
@@ -169,11 +169,46 @@ func TestRunLatencyGatedOnCleanRunOnly(t *testing.T) {
 	}
 }
 
+func TestRunNonGatingFaultDoesNotFail(t *testing.T) {
+	// ws-server reproduces data loss on BOTH batches, but it is non-gating: the report stays OK,
+	// the outcome is recorded + marked NonGating, and it is NOT retried (no wasted second batch).
+	calls := map[string]int{}
+	run := func(fault string, _ int) (report.Result, error) {
+		calls[fault]++
+		if fault == "ws-server" {
+			return mkResult(false, 4, 1000, 0, okP50, okP99, okP999), nil
+		}
+		return clean(), nil
+	}
+	rep := Run([]string{CleanFault, "ws-server"}, 3, ceilings, map[string]bool{"ws-server": true}, run)
+	if !rep.OK {
+		t.Fatalf("report must be OK — ws-server is non-gating even though it lost data: %+v", rep)
+	}
+	var ws FaultOutcome
+	for _, f := range rep.Faults {
+		if f.Fault == "ws-server" {
+			ws = f
+		}
+	}
+	if !ws.NonGating {
+		t.Errorf("ws-server should be marked NonGating")
+	}
+	if ws.OK {
+		t.Errorf("ws-server verdict should still record OK=false (visible), got OK=true")
+	}
+	if ws.Retried {
+		t.Errorf("a non-gating fault must not be retried")
+	}
+	if calls["ws-server"] != 3 {
+		t.Errorf("ws-server should run its 3 runs once (no retry), got %d", calls["ws-server"])
+	}
+}
+
 func TestRunErrorIsAFailure(t *testing.T) {
 	run := func(_ string, _ int) (report.Result, error) {
 		return report.Result{}, errors.New("stack failed to boot")
 	}
-	rep := Run([]string{CleanFault}, 2, ceilings, run)
+	rep := Run([]string{CleanFault}, 2, ceilings, nil, run)
 	if rep.OK {
 		t.Fatalf("a RunFunc error must fail the report")
 	}

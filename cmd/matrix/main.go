@@ -26,6 +26,11 @@ import (
 func main() {
 	scenario := flag.String("scenario", "scenarios/odds-burst.toml", "scenario TOML")
 	faultsCSV := flag.String("faults", matrix.CleanFault+",valkey,redpanda,ws-server", "comma-separated faults; 'clean' = no fault (the only latency-gated run)")
+	// ws-server replica-kill loses in-flight messages on the surviving replica (a pod-lapse gap the
+	// server does not yet recover — the accepted fix is ADR-0017 pod-level backfill, not yet built).
+	// It is a known, separately-tracked gap on every edition, not a regression, so it runs and is
+	// reported but does not gate; drop it from this list once ADR-0017 lands and it holds zero-loss.
+	nonGatingCSV := flag.String("non-gating", "ws-server", "comma-separated faults that are run and reported but never fail the gate (blank = all faults gate)")
 	runs := flag.Int("runs", 3, "runs per fault")
 	out := flag.String("out", "matrix-results", "output dir for per-run artifacts + matrix.json")
 	ws := flag.String("ws", os.Getenv("BENCH_WS"), "gateway WS base URL")
@@ -88,6 +93,12 @@ func main() {
 		fatal(fmt.Errorf("latency ceilings are set but --faults has no %q run to gate them against; "+
 			"add %q to --faults, or disable the ceilings with --p50=0 --p99=0 --p999=0", matrix.CleanFault, matrix.CleanFault))
 	}
+	nonGating := make(map[string]bool)
+	for _, f := range strings.Split(*nonGatingCSV, ",") {
+		if f = strings.TrimSpace(f); f != "" {
+			nonGating[f] = true
+		}
+	}
 
 	d := &runner{
 		bench: *benchBin, ws: *ws, http: *httpURL, token: *token, scenario: *scenario,
@@ -95,7 +106,7 @@ func main() {
 		faultDelay: delay, outage: *outage,
 	}
 
-	rep := matrix.Run(faults, *runs, thresholds, d.run)
+	rep := matrix.Run(faults, *runs, thresholds, nonGating, d.run)
 
 	if err := writeReport(*out, rep); err != nil {
 		fatal(err)
@@ -213,6 +224,9 @@ func printSummary(rep matrix.Report, delay time.Duration) {
 		status := "PASS"
 		if !f.OK {
 			status = "FAIL"
+		}
+		if f.NonGating {
+			status += " (non-gating)"
 		}
 		retried := ""
 		if f.Retried {

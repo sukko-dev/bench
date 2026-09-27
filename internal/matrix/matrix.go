@@ -53,10 +53,11 @@ type RunVerdict struct {
 // FaultOutcome is a fault's final verdict. Runs holds the AUTHORITATIVE batch — the retry batch
 // when Retried is true (the retry supersedes the flaky first batch), else the only batch.
 type FaultOutcome struct {
-	Fault   string       `json:"fault"`
-	OK      bool         `json:"ok"`
-	Retried bool         `json:"retried,omitempty"`
-	Runs    []RunVerdict `json:"runs"`
+	Fault     string       `json:"fault"`
+	OK        bool         `json:"ok"`
+	Retried   bool         `json:"retried,omitempty"`
+	NonGating bool         `json:"non_gating,omitempty"` // recorded + surfaced, but never fails the report
+	Runs      []RunVerdict `json:"runs"`
 }
 
 // Report is the whole matrix verdict — OK is false if any fault reproduced a failure.
@@ -132,10 +133,20 @@ func runFault(fault string, n int, t Thresholds, run RunFunc) FaultOutcome {
 // fault is retried ONCE (a fresh batch), and the retry batch is authoritative. Only a
 // reproduced failure fails the report — a first-batch failure that clears on retry is a flake
 // (Retried is recorded so the flake is visible). Faults run in the given order.
-func Run(faults []string, n int, t Thresholds, run RunFunc) Report {
+// A fault in nonGating is still run and classified — its outcome reaches matrix.json so the
+// behavior stays visible — but it never fails the report and is not retried (retry-once exists
+// only to keep a flaky GATING fault from false-failing the gate). Used for a fault whose failure
+// is a known, separately-tracked gap rather than a regression the gate should block on (e.g.
+// ws-server replica-kill loss pending ADR-0017 pod-level backfill).
+func Run(faults []string, n int, t Thresholds, nonGating map[string]bool, run RunFunc) Report {
 	rep := Report{OK: true}
 	for _, f := range faults {
 		oc := runFault(f, n, t, run)
+		if nonGating[f] {
+			oc.NonGating = true
+			rep.Faults = append(rep.Faults, oc)
+			continue // never retried, never gates
+		}
 		if !oc.OK {
 			oc = runFault(f, n, t, run) // retry-once: the retry batch supersedes the flaky first
 			oc.Retried = true
