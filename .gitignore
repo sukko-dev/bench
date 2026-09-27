@@ -2,3 +2,4 @@ bin/
 results/
 .bench.env
 .bench-keys/
+matrix-results/

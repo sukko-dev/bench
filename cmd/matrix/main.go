@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,7 +25,7 @@ import (
 
 func main() {
 	scenario := flag.String("scenario", "scenarios/odds-burst.toml", "scenario TOML")
-	faultsCSV := flag.String("faults", "clean,valkey,redpanda,ws-server", "comma-separated faults; 'clean' = no fault")
+	faultsCSV := flag.String("faults", matrix.CleanFault+",valkey,redpanda,ws-server", "comma-separated faults; 'clean' = no fault (the only latency-gated run)")
 	runs := flag.Int("runs", 3, "runs per fault")
 	out := flag.String("out", "matrix-results", "output dir for per-run artifacts + matrix.json")
 	ws := flag.String("ws", os.Getenv("BENCH_WS"), "gateway WS base URL")
@@ -76,13 +77,25 @@ func main() {
 		fatal(err)
 	}
 
+	// Latency ceilings gate the clean (no-fault) run only (matrix.Classify): a fault run's tail is
+	// the injected outage, not a regression. So if any ceiling is set but there is no clean run to
+	// gate, those flags would be silently inert — a configured guardrail that checks nothing. Reject
+	// it, matching this command's other fail-loud-on-vacuous-config guards; an operator who genuinely
+	// wants a fault-only matrix disables the ceilings explicitly with --p50=0 --p99=0 --p999=0.
+	faults := strings.Split(*faultsCSV, ",")
+	thresholds := matrix.Thresholds{P50: *p50, P99: *p99, P999: *p999}
+	if (thresholds.P50 > 0 || thresholds.P99 > 0 || thresholds.P999 > 0) && !slices.Contains(faults, matrix.CleanFault) {
+		fatal(fmt.Errorf("latency ceilings are set but --faults has no %q run to gate them against; "+
+			"add %q to --faults, or disable the ceilings with --p50=0 --p99=0 --p999=0", matrix.CleanFault, matrix.CleanFault))
+	}
+
 	d := &runner{
 		bench: *benchBin, ws: *ws, http: *httpURL, token: *token, scenario: *scenario,
 		outRoot: *out, faultsDir: *faultsDir, composeFile: *composeFile, project: *project,
 		faultDelay: delay, outage: *outage,
 	}
 
-	rep := matrix.Run(strings.Split(*faultsCSV, ","), *runs, matrix.Thresholds{P50: *p50, P99: *p99, P999: *p999}, d.run)
+	rep := matrix.Run(faults, *runs, thresholds, d.run)
 
 	if err := writeReport(*out, rep); err != nil {
 		fatal(err)
@@ -112,7 +125,7 @@ func (r *runner) run(fault string, runIdx int) (report.Result, error) {
 		"--scenario", r.scenario, "--out", outDir)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
-	if fault == "clean" {
+	if fault == matrix.CleanFault {
 		if err := cmd.Run(); !benchCompleted(err) {
 			return report.Result{}, fmt.Errorf("bench clean run: %w", err)
 		}
@@ -213,7 +226,7 @@ func printSummary(rep matrix.Report, delay time.Duration) {
 		}
 	}
 	if rep.OK {
-		fmt.Println("=== VERDICT: PASS — zero data loss, latency within ceilings ===")
+		fmt.Println("=== VERDICT: PASS — zero data loss, clean-run latency within ceilings ===")
 	} else {
 		fmt.Println("=== VERDICT: FAIL — reproduced regression (see above) ===")
 	}
