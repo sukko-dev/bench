@@ -19,8 +19,8 @@
 #
 # Environment (the workflow sets these; all have defaults for a hand-run):
 #   MODE          main | release                      (default: main)
-#   SUKKO_REF     main mode: git ref to build;         (default: main)
-#                 release mode: the vX.Y.Z tag (used for BOTH the checkout and the image tag)
+#   SUKKO_REF     main mode: the git ref to build from source;   (default: main)
+#                 release mode: the vX.Y.Z image tag to pull (no source checkout in this mode)
 #   GO_VERSION    Go toolchain to install              (default: 1.26.0)
 #   CLI_VERSION   sukko CLI release to install         (default: 1.0.2)
 #   SCENARIO      scenario TOML for the matrix         (default: scenarios/odds-burst.toml)
@@ -109,8 +109,13 @@ case "$MODE" in
     export SUKKO_IMAGE_PROVISIONING="sukko-local/provisioning:ci"
     ;;
   release)
-    # Gate the immutable released artifact: pull the :vX.Y.Z tag (public on ghcr).
-    [ -n "$SUKKO_REF" ] || { echo "MODE=release requires SUKKO_REF=<vX.Y.Z tag>" >&2; exit 2; }
+    # Gate the immutable released artifact: pull the :vX.Y.Z tag (public on ghcr). Shape-check the
+    # ref — SUKKO_REF defaults to "main", which as a release tag would pull a :main image that does
+    # not exist (merges publish no tag) and fail ~5 min in with an opaque pull error; catch it here.
+    case "$SUKKO_REF" in
+      v[0-9]*) ;;
+      *) echo "MODE=release requires SUKKO_REF=<vX.Y.Z tag>, got '$SUKKO_REF'" >&2; exit 2 ;;
+    esac
     log "MODE=release: pulling immutable images for ${SUKKO_REF}"
     export SUKKO_IMAGE_SERVER="ghcr.io/sukko-dev/sukko-server:${SUKKO_REF}"
     export SUKKO_IMAGE_GATEWAY="ghcr.io/sukko-dev/sukko-gateway:${SUKKO_REF}"
