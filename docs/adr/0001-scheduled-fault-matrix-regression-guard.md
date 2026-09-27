@@ -86,3 +86,25 @@ account exist. Once a manual run is green end-to-end, a deliberate follow-up add
 - **GCP-native scheduling (Cloud Scheduler)** or a **self-hosted ephemeral runner** — keep
   triggers/logs/history away from where the rest of CI lives, or add runner-lifecycle and
   VM-leak ownership; GH Actions + `gcloud` + WIF keeps it in one place with keyless auth.
+
+## Amendment (2026-09-26): latency ceilings gate the clean run only
+
+The Decision above describes the latency ceilings as applying alongside `holes == 0` across all
+runs. Implementation surfaced that this is wrong for fault runs, and the ceilings now gate the
+**clean (no-fault) run only**; every fault run is judged on `holes == 0` + recovery (the bench's
+`report.Result.Pass`).
+
+Why: a fault kills a dependency mid-burst, and Sukko delivers messages published during the
+outage late (at-least-once + replay), so a fault run's p99/p999 is dominated by the outage
+duration — seconds — by construction, with zero data loss. Holding that to the steady-state
+ceilings (calibrated "well above the ~28.5/50/56.5 ms headline") would fail every fault run even
+on perfect recovery. This matches the bench's own two claims (METHODOLOGY §5: C1 latency-under-
+burst is steady-state; a fault run is the C3 bounded-recovery claim, judged on the checker verdict
+and recovery), and the chaos-engineering norm that steady-state latency SLOs are validated in
+steady state, not held against a system mid-fault (AWS Well-Architected REL12-BP04; Principles of
+Chaos Engineering). Latency is still recorded for every run.
+
+Follow-up (not yet implemented): the metric that *should* bound a fault run quantitatively is
+recovery **time** (MTTR) — "recover within N" — not latency. The bench already records
+`RecoveryStat{ReconnectMs, GapClosedMs}`; a bounded-recovery-time ceiling on fault runs is the
+natural successor to the (removed) latency ceiling and is tracked as a follow-up.

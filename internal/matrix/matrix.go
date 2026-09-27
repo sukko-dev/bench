@@ -1,9 +1,17 @@
 // Package matrix aggregates a fault-matrix run into a pass/fail regression verdict.
 //
 // The gate: every run of every fault must PASS the bench's own verdict (zero data loss +
-// harness-sound + recovery-ok, i.e. report.Result.Pass) AND stay under generous absolute
-// latency ceilings; a failing fault is retried once, and only a REPRODUCED failure is a
-// regression — separating a real regression from an infra flake (ADR-0001).
+// harness-sound + recovery-ok, i.e. report.Result.Pass); a failing fault is retried once, and
+// only a REPRODUCED failure is a regression — separating a real regression from an infra flake
+// (ADR-0001).
+//
+// Latency ceilings apply to the CLEAN (no-fault) run ONLY. This follows the bench's own two
+// claims (METHODOLOGY §5): C1 latency-under-burst is a STEADY-STATE claim, while a fault run is a
+// C3 bounded-recovery claim judged on the checker verdict and recovery timing. A dependency killed
+// mid-burst delays every message published during the outage by ~the outage, so a fault run's tail
+// is seconds by construction — holding it to the steady-state ceiling would fail every fault run
+// even with perfect zero-loss recovery (the chaos-engineering anti-pattern of gating mid-fault
+// latency against the steady-state SLO). Latency is still RECORDED for every run regardless.
 //
 // This is the gate: if it lies, a regression ships silently. So it is pure and unit-tested,
 // with the orchestration (boot the stack, inject the fault into the burst window, run the
@@ -16,6 +24,11 @@ import (
 
 	"github.com/sukko-dev/bench/internal/report"
 )
+
+// CleanFault is the no-fault baseline run — the only run the latency ceilings gate (see Classify).
+// Defined once here and referenced everywhere the "clean" run is special-cased (§I: no magic
+// strings).
+const CleanFault = "clean"
 
 // Thresholds are the generous absolute latency ceilings (ADR-0001): a run fails only on a
 // gross regression, so ordinary tail noise never flakes the gate. A zero ceiling disables that
@@ -57,8 +70,11 @@ type Report struct {
 // failed, which triggers the same retry as a data-loss/latency failure.
 type RunFunc func(fault string, run int) (report.Result, error)
 
-// Classify judges one bench Result against the gate. Pure.
-func Classify(r report.Result, t Thresholds) RunVerdict {
+// Classify judges one bench Result against the gate. Pure. r.Pass (zero-loss + harness-sound +
+// recovery-ok) gates every run; the latency ceilings gate ONLY when latencyGated is true — the
+// clean run — because a fault run's tail is dominated by the injected outage, not by a performance
+// regression (see the package doc). Latency is recorded on the verdict regardless of latencyGated.
+func Classify(r report.Result, t Thresholds, latencyGated bool) RunVerdict {
 	v := RunVerdict{
 		RunID: r.RunID, Holes: r.Holes,
 		P50: r.Latency.P50, P99: r.Latency.P99, P999: r.Latency.P999,
@@ -75,29 +91,34 @@ func Classify(r report.Result, t Thresholds) RunVerdict {
 			}
 		}
 	}
-	if t.P50 > 0 && r.Latency.P50 > t.P50 {
-		v.Reasons = append(v.Reasons, fmt.Sprintf("p50 %s over ceiling %s", r.Latency.P50, t.P50))
-	}
-	if t.P99 > 0 && r.Latency.P99 > t.P99 {
-		v.Reasons = append(v.Reasons, fmt.Sprintf("p99 %s over ceiling %s", r.Latency.P99, t.P99))
-	}
-	if t.P999 > 0 && r.Latency.P999 > t.P999 {
-		v.Reasons = append(v.Reasons, fmt.Sprintf("p999 %s over ceiling %s", r.Latency.P999, t.P999))
+	if latencyGated {
+		if t.P50 > 0 && r.Latency.P50 > t.P50 {
+			v.Reasons = append(v.Reasons, fmt.Sprintf("p50 %s over ceiling %s", r.Latency.P50, t.P50))
+		}
+		if t.P99 > 0 && r.Latency.P99 > t.P99 {
+			v.Reasons = append(v.Reasons, fmt.Sprintf("p99 %s over ceiling %s", r.Latency.P99, t.P99))
+		}
+		if t.P999 > 0 && r.Latency.P999 > t.P999 {
+			v.Reasons = append(v.Reasons, fmt.Sprintf("p999 %s over ceiling %s", r.Latency.P999, t.P999))
+		}
 	}
 	v.OK = len(v.Reasons) == 0
 	return v
 }
 
-// runFault runs one fault's batch of n runs and returns its outcome.
+// runFault runs one fault's batch of n runs and returns its outcome. The clean (no-fault) run is
+// the only one whose latency is gated — every other fault is a bounded-recovery test judged on
+// zero-loss + recovery, not on a tail the outage inflates by construction.
 func runFault(fault string, n int, t Thresholds, run RunFunc) FaultOutcome {
 	oc := FaultOutcome{Fault: fault, OK: true}
+	latencyGated := fault == CleanFault
 	for i := range n {
 		r, err := run(fault, i)
 		var v RunVerdict
 		if err != nil {
 			v = RunVerdict{OK: false, Reasons: []string{"run error: " + err.Error()}}
 		} else {
-			v = Classify(r, t)
+			v = Classify(r, t, latencyGated)
 		}
 		oc.Runs = append(oc.Runs, v)
 		if !v.OK {

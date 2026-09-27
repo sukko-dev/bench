@@ -30,23 +30,33 @@ const (
 func clean() report.Result { return mkResult(true, 0, 1000, 0, okP50, okP99, okP999) }
 
 func TestClassify(t *testing.T) {
+	// A fault run's tail is dominated by the injected outage (a valkey/redpanda kill delays every
+	// message published during the outage by ~the outage), so a real fault run routinely shows
+	// multi-second p99/p999 with zero data loss. 6.4s is the actual value observed in the v3 spike.
+	const faultTail = 6400 * time.Millisecond
 	tests := []struct {
 		name    string
 		r       report.Result
+		gated   bool // latencyGated: true for the clean/no-fault run, false for a fault run
 		wantOK  bool
 		wantSub string // substring the first reason must contain (when !wantOK)
 	}{
-		{"clean run passes", clean(), true, ""},
-		{"data loss fails", mkResult(false, 12, 1000, 0, okP50, okP99, okP999), false, "data loss: 12 holes"},
-		{"harness unsound fails", mkResult(false, 0, 0, 0, okP50, okP99, okP999), false, "harness unsound"},
-		{"recovery-incomplete fails", mkResult(false, 0, 1000, 0, okP50, okP99, okP999), false, "recovery incomplete"},
-		{"p99 latency breach fails a zero-loss run", mkResult(true, 0, 1000, 0, okP50, 130*time.Millisecond, okP999), false, "p99"},
-		{"p999 latency breach fails", mkResult(true, 0, 1000, 0, okP50, okP99, 250*time.Millisecond), false, "p999"},
-		{"p50 latency breach fails", mkResult(true, 0, 1000, 0, 70*time.Millisecond, okP99, okP999), false, "p50"},
+		// Gated (clean run): r.Pass gates and the latency ceilings gate.
+		{"clean run passes", clean(), true, true, ""},
+		{"data loss fails", mkResult(false, 12, 1000, 0, okP50, okP99, okP999), true, false, "data loss: 12 holes"},
+		{"harness unsound fails", mkResult(false, 0, 0, 0, okP50, okP99, okP999), true, false, "harness unsound"},
+		{"recovery-incomplete fails", mkResult(false, 0, 1000, 0, okP50, okP99, okP999), true, false, "recovery incomplete"},
+		{"p99 latency breach fails the clean run", mkResult(true, 0, 1000, 0, okP50, 130*time.Millisecond, okP999), true, false, "p99"},
+		{"p999 latency breach fails the clean run", mkResult(true, 0, 1000, 0, okP50, okP99, 250*time.Millisecond), true, false, "p999"},
+		{"p50 latency breach fails the clean run", mkResult(true, 0, 1000, 0, 70*time.Millisecond, okP99, okP999), true, false, "p50"},
+		// Not gated (fault run): r.Pass still gates, but the latency ceilings do NOT.
+		{"fault run with a huge outage tail but zero loss PASSES", mkResult(true, 0, 1000, 0, okP50, faultTail, faultTail), false, true, ""},
+		{"fault run still fails on data loss", mkResult(false, 5, 1000, 0, okP50, faultTail, faultTail), false, false, "data loss: 5 holes"},
+		{"fault run still fails on incomplete recovery", mkResult(false, 0, 1000, 0, okP50, faultTail, faultTail), false, false, "recovery incomplete"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			v := Classify(tc.r, ceilings)
+			v := Classify(tc.r, ceilings, tc.gated)
 			if v.OK != tc.wantOK {
 				t.Fatalf("OK = %v (reasons %v), want %v", v.OK, v.Reasons, tc.wantOK)
 			}
@@ -74,7 +84,7 @@ func contains(reasons []string, sub string) bool {
 func TestRunAllClean(t *testing.T) {
 	calls := 0
 	run := func(_ string, _ int) (report.Result, error) { calls++; return clean(), nil }
-	rep := Run([]string{"clean", "valkey", "redpanda"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "valkey", "redpanda"}, 3, ceilings, run)
 	if !rep.OK {
 		t.Fatalf("report not OK: %+v", rep)
 	}
@@ -98,7 +108,7 @@ func TestRunFlakeRecoversOnRetry(t *testing.T) {
 		}
 		return clean(), nil
 	}
-	rep := Run([]string{"clean", "valkey"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "valkey"}, 3, ceilings, run)
 	if !rep.OK {
 		t.Fatalf("report should be OK — valkey recovered on retry: %+v", rep)
 	}
@@ -124,7 +134,7 @@ func TestRunReproducedRegressionFails(t *testing.T) {
 		}
 		return clean(), nil
 	}
-	rep := Run([]string{"clean", "redpanda"}, 3, ceilings, run)
+	rep := Run([]string{CleanFault, "redpanda"}, 3, ceilings, run)
 	if rep.OK {
 		t.Fatalf("report should FAIL — redpanda reproduced data loss")
 	}
@@ -137,11 +147,33 @@ func TestRunReproducedRegressionFails(t *testing.T) {
 	}
 }
 
+func TestRunLatencyGatedOnCleanRunOnly(t *testing.T) {
+	// The identical zero-loss result with a multi-second tail: a PASS as a fault run (its tail is
+	// the injected outage, not a regression), a FAIL as the clean run (a real steady-state breach).
+	bigTail := mkResult(true, 0, 1000, 0, okP50, 6400*time.Millisecond, 6400*time.Millisecond)
+	run := func(_ string, _ int) (report.Result, error) { return bigTail, nil }
+
+	// valkey (a fault) with the big tail → OK: latency is not gated for a fault run.
+	rep := Run([]string{"valkey"}, 2, ceilings, run)
+	if !rep.OK {
+		t.Errorf("fault run with an outage tail but zero loss must PASS: %+v", rep.Faults[0].Runs)
+	}
+
+	// The same result under the clean run → FAIL on the latency ceiling.
+	rep = Run([]string{CleanFault}, 2, ceilings, run)
+	if rep.OK {
+		t.Fatalf("clean run with a 6.4s tail must FAIL the latency ceiling")
+	}
+	if !contains(rep.Faults[0].Runs[0].Reasons, "p99") {
+		t.Errorf("clean-run failure should cite the latency ceiling: %+v", rep.Faults[0].Runs[0].Reasons)
+	}
+}
+
 func TestRunErrorIsAFailure(t *testing.T) {
 	run := func(_ string, _ int) (report.Result, error) {
 		return report.Result{}, errors.New("stack failed to boot")
 	}
-	rep := Run([]string{"clean"}, 2, ceilings, run)
+	rep := Run([]string{CleanFault}, 2, ceilings, run)
 	if rep.OK {
 		t.Fatalf("a RunFunc error must fail the report")
 	}
