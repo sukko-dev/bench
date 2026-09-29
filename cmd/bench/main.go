@@ -181,6 +181,7 @@ func run() int {
 	result := report.Result{
 		RunID:                id,
 		Scenario:             filepath.Base(*scenarioPath),
+		Transport:            *transport,
 		Pass:                 res.Check.Pass() && harnessOK && recoveryOK,
 		Latency:              latency,
 		DriverCPU:            driverCPU,

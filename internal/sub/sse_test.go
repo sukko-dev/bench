@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -196,5 +197,116 @@ func TestSSESubscriber_ConnectRejectionIsSetupError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected StartSSE to fail on a 403, got nil error")
+	}
+}
+
+// TestSSESubscriber_BareIDBlockCommitsCursor pins the WHATWG dispatch semantics the
+// cursor-commit fix relies on: a keepalive comment is skipped; a bare `id:\n\n` block
+// (no data — the gateway's low-traffic keepalive-flush) commits the resume cursor; and
+// a following message event with NO id: line does not clobber it. On redial the echoed
+// Last-Event-ID must be the bare block's id.
+func TestSSESubscriber_BareIDBlockCommitsCursor(t *testing.T) {
+	const runID, channel, bareCursor = "run-1", "t.a", "v1:BARE-CURSOR"
+	msgNoID := sseEnvelope(t, runID, channel, 1, "1-100", "mid-1")
+
+	var mu sync.Mutex
+	var connects int
+	var lastEventIDs []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		connects++
+		n := connects
+		lastEventIDs = append(lastEventIDs, r.Header.Get("Last-Event-ID"))
+		mu.Unlock()
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flush := func() {
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+		}
+		if n == 1 {
+			fmt.Fprint(w, ": keepalive\n\n")                      // comment — skipped
+			fmt.Fprintf(w, "id: %s\n\n", bareCursor)              // bare id block — commits cursor, no event
+			fmt.Fprintf(w, "event: message\ndata: %s\n\n", msgNoID) // message with NO id: — must not clobber cursor
+			flush()
+			return // stream ends → subscriber redials
+		}
+		fmt.Fprintf(w, "event: message\ndata: %s\n\n", sseEnvelope(t, runID, channel, 2, "1-101", "mid-2"))
+		flush()
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	s, err := StartSSE(context.Background(), Config{
+		URL: srv.URL, Token: "tok", RunID: runID, ClientID: "sse-1",
+		Channels: []string{channel}, LogPath: filepath.Join(t.TempDir(), "sse-1.rlog"),
+		RedialDelay: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("StartSSE: %v", err)
+	}
+	defer func() { _ = s.Stop() }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		n := connects
+		mu.Unlock()
+		if n >= 2 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if connects < 2 {
+		t.Fatalf("expected a redial, got %d connects", connects)
+	}
+	if lastEventIDs[1] != bareCursor {
+		t.Errorf("redial Last-Event-ID = %q, want %q (bare id block commits the cursor; a later id-less message must not clobber it)", lastEventIDs[1], bareCursor)
+	}
+}
+
+// TestSSESubscriber_MultilineData proves multiple data: lines in one event are joined
+// with '\n' before decode — a split envelope still parses and logs.
+func TestSSESubscriber_MultilineData(t *testing.T) {
+	const runID, channel = "run-1", "t.a"
+	env := sseEnvelope(t, runID, channel, 1, "1-100", "mid-1")
+	// Split at a token boundary (just after the comma before "pos") so the rejoined
+	// '\n' lands as inter-token whitespace, which JSON tolerates — a mid-string split
+	// would not. This exercises the reader's multi-line data: joining.
+	cut := strings.Index(env, `,"pos"`) + 1
+	if cut <= 0 {
+		t.Fatalf("could not find split boundary in %q", env)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		// Two data: lines, joined with '\n' by the reader before decode.
+		fmt.Fprintf(w, "event: message\ndata: %s\ndata: %s\n\n", env[:cut], env[cut:])
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	s, err := StartSSE(context.Background(), Config{
+		URL: srv.URL, Token: "tok", RunID: runID, ClientID: "sse-1",
+		Channels: []string{channel}, LogPath: filepath.Join(t.TempDir(), "sse-1.rlog"),
+	})
+	if err != nil {
+		t.Fatalf("StartSSE: %v", err)
+	}
+	defer func() { _ = s.Stop() }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for s.Received() < 1 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s.Received() != 1 {
+		t.Fatalf("received %d, want 1 (multi-line data must rejoin and parse)", s.Received())
 	}
 }

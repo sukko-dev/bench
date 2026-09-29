@@ -126,6 +126,7 @@ func (s *SSESubscriber) run(ctx context.Context, resp *http.Response) {
 			return // run ended while redialing — under-recovery shows as holes
 		}
 		s.addEvent(EventResubscribed)
+		s.closeCurrentBody() // close the dead stream before swapping in the new one (no leak, no ErrTooLong redial loop)
 		resp = next
 		s.setBody(resp.Body)
 	}
@@ -138,6 +139,8 @@ func (s *SSESubscriber) readStream(ctx context.Context, body io.ReadCloser) {
 	sc := bufio.NewScanner(body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	var data strings.Builder
+	var lastEventID string // the block's id: value, held until the block dispatches
+	hasSeenID := false     // an id: appeared on this stream (guards against clobbering the cursor with "")
 	hasData := false
 	for sc.Scan() {
 		if ctx.Err() != nil {
@@ -146,6 +149,18 @@ func (s *SSESubscriber) readStream(ctx context.Context, body io.ReadCloser) {
 		line := sc.Text()
 		switch {
 		case line == "":
+			// Dispatch. WHATWG EventSource commits the last-event-ID at the blank line
+			// (even for a data-less block — e.g. the gateway's bare `id:\n\n`
+			// keepalive-flush), NOT when the id: line is parsed. So a block truncated
+			// before its terminating blank line (an id: line delivered, the event body
+			// or blank line lost — reachable once a gateway-kill/partition fault exists)
+			// never advances the resume cursor past an event this subscriber never
+			// dispatched, which would otherwise skip it on redial and read as a hole.
+			if hasSeenID {
+				s.mu.Lock()
+				s.cursor = lastEventID // opaque, verbatim
+				s.mu.Unlock()
+			}
 			if hasData {
 				s.dispatch(data.String())
 			}
@@ -154,10 +169,8 @@ func (s *SSESubscriber) readStream(ctx context.Context, body io.ReadCloser) {
 		case strings.HasPrefix(line, ":"):
 			// keepalive comment — ignore
 		case strings.HasPrefix(line, "id:"):
-			id := strings.TrimSpace(strings.TrimPrefix(line, "id:"))
-			s.mu.Lock()
-			s.cursor = id // opaque, verbatim
-			s.mu.Unlock()
+			lastEventID = strings.TrimSpace(strings.TrimPrefix(line, "id:"))
+			hasSeenID = true
 		case strings.HasPrefix(line, "data:"):
 			if hasData {
 				data.WriteByte('\n')
