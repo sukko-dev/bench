@@ -40,10 +40,14 @@ func main() {
 	p999 := flag.Duration("p999", 200*time.Millisecond, "p999 latency ceiling (0 disables)")
 	offset := flag.Duration("fault-offset", time.Second, "how far into the second burst to fire the fault")
 	outage := flag.Duration("outage", 5*time.Second, "how long the dependency stays down before restart")
+	transport := flag.String("transport", "ws", "subscriber transport passed to bench: ws | sse (sse proves ADR-0030 Last-Event-ID recovery; the stack MUST run a Pro license for SSE)")
 	flag.Parse()
 
 	if *ws == "" || *httpURL == "" || *token == "" {
 		fatal(fmt.Errorf("--ws, --http, --token (or BENCH_WS/BENCH_HTTP/BENCH_TOKEN) are required"))
+	}
+	if *transport != "ws" && *transport != "sse" {
+		fatal(fmt.Errorf("--transport must be ws or sse, got %q", *transport))
 	}
 	// A zero (or negative) run count would make matrix.Run iterate no runs per fault, leave every
 	// fault's OK true, and exit 0 — a matrix that ran nothing yet reports all-PASS. Reject it here.
@@ -92,7 +96,7 @@ func main() {
 	d := &runner{
 		bench: *benchBin, ws: *ws, http: *httpURL, token: *token, scenario: *scenario,
 		outRoot: *out, faultsDir: *faultsDir, composeFile: *composeFile, project: *project,
-		faultDelay: delay, outage: *outage,
+		faultDelay: delay, outage: *outage, transport: *transport,
 	}
 
 	rep := matrix.Run(faults, *runs, thresholds, d.run)
@@ -110,6 +114,7 @@ func main() {
 type runner struct {
 	bench, ws, http, token, scenario         string
 	outRoot, faultsDir, composeFile, project string
+	transport                                string
 	faultDelay, outage                       time.Duration
 }
 
@@ -122,7 +127,7 @@ func (r *runner) run(fault string, runIdx int) (report.Result, error) {
 		return report.Result{}, err
 	}
 	cmd := exec.Command(r.bench, "--ws", r.ws, "--http", r.http, "--token", r.token,
-		"--scenario", r.scenario, "--out", outDir)
+		"--scenario", r.scenario, "--out", outDir, "--transport", r.transport)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	if fault == matrix.CleanFault {
