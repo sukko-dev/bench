@@ -135,9 +135,13 @@ func HarnessSound(confirmed, unconfirmed int) (bool, string) {
 
 // Result is the committed per-run artifact.
 type Result struct {
-	RunID    string  `json:"run_id"`
-	Scenario string  `json:"scenario"`
-	Pass     bool    `json:"pass"`
+	RunID    string `json:"run_id"`
+	Scenario string `json:"scenario"`
+	// Transport is the subscriber transport this run used ("ws" or "sse"). Recorded so a
+	// published artifact self-identifies which transport it proves — an SSE recovery matrix
+	// and a WS one are otherwise indistinguishable after the fact.
+	Transport string  `json:"transport"`
+	Pass      bool    `json:"pass"`
 	Latency  Latency `json:"latency"`
 	// DriverCPU discloses the load generator's own CPU use for the run so a
 	// reader can confirm the driver was not the bottleneck (METHODOLOGY §2).

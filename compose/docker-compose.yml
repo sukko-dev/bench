@@ -58,6 +58,13 @@ services:
       - "18080:8080"
     environment:
       ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:-}"
+      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-}" # empty ⇒ Community; set ⇒ Pro (SSE matrix, ADR-0030)
+      # Pro/Enterprise editions require these two (webhooks are Pro-gated); empty is fine on
+      # Community. The bench runs no webhook-worker and exercises no webhooks — they exist only
+      # to satisfy Pro config validation for the SSE matrix. The worker addr is dialed lazily
+      # (grpc.NewClient), so an unreachable placeholder never fails startup.
+      WEBHOOK_INTERNAL_TOKEN: "${WEBHOOK_INTERNAL_TOKEN:-}"
+      WEBHOOK_WORKER_GRPC_ADDR: "${WEBHOOK_WORKER_GRPC_ADDR:-}"
       CREDENTIALS_ENCRYPTION_KEY: "${CREDENTIALS_ENCRYPTION_KEY:-}"
       DATABASE_URL: "postgres://sukko:sukko@postgres:5432/sukko?sslmode=disable"
       KAFKA_TOPIC_NAMESPACE: "local"
@@ -78,6 +85,11 @@ services:
     environment:
       - VALKEY_ADDRS=valkey:6379
       - PROVISIONING_GRPC_ADDR=provisioning:9090
+      # Empty ⇒ Community (the WS fault matrix runs license-free, ADR-0009). Set to a
+      # signed token ⇒ Pro, which unlocks the Pro-gated SSE transport for the SSE
+      # fault matrix (ADR-0030). Verified against the license key baked into the
+      # image, so a dev-minted token requires a source-built image.
+      - SUKKO_LICENSE_KEY=${SUKKO_LICENSE_KEY:-}
       - MESSAGE_BACKEND=kafka
       - KAFKA_BROKERS=redpanda:9092
       - KAFKA_TOPIC_NAMESPACE=local
@@ -109,6 +121,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-}" # empty ⇒ Community; set ⇒ Pro, unlocks the SSE transport (ADR-0030)
       GATEWAY_BACKEND_URL: "ws://ws-server:3005/ws"
       SERVER_GRPC_ADDR: "ws-server:3006"
       # Tenant JWT signing keys, API keys and revocations reach the gateway ONLY over

@@ -77,6 +77,25 @@ sleep <into-the-burst> && task fault-ws        # or fault-valkey / fault-redpand
 Then restart the killed dependency (`docker compose ... start <svc>`) for the
 recovery-window measurement.
 
+## SSE transport (ADR-0030 Last-Event-ID recovery)
+
+By default subscribers use raw WebSocket. Pass `--transport sse` (to `bench` or
+`matrix`) to run the same scenarios over Server-Sent Events, proving SSE reconnect
+recovery is lossless under a ws-server kill. The SSE transport is **Pro-gated**, so the
+stack must boot with a license — otherwise every SSE connect gets a 403 at `StartSSE`.
+Before `task stack-up` / `task matrix`, export a Pro license and the two webhook secrets
+Pro config validation requires (the bench runs no webhook-worker; the worker address is a
+lazily-dialed placeholder):
+
+```sh
+export SUKKO_LICENSE_KEY="$(cd ../sukko/ws && go run ./internal/shared/license/gentoken \
+  --key internal/shared/license/keys/sukko.dev.key --edition pro --org bench --expires +1y)"
+export WEBHOOK_INTERNAL_TOKEN="$(openssl rand -hex 24)" WEBHOOK_WORKER_GRPC_ADDR=webhook-worker:9095
+# and point SUKKO_IMAGE_SERVER/GATEWAY/PROVISIONING at images built with
+# --build-arg GO_BUILD_TAGS=sukko_e2e (which embed the dev key the token is signed with)
+task matrix SCENARIO=scenarios/smoke.toml MATRIX_ARGS="--faults ws-server --transport sse --p50=0 --p99=0 --p999=0"
+```
+
 ## Laptop smoke (not a published number)
 
 ```sh

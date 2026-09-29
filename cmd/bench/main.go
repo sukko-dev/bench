@@ -47,10 +47,15 @@ func run() int {
 	scenarioPath := flag.String("scenario", "", "path to the scenario TOML")
 	outDir := flag.String("out", "", "directory for result artifacts (created if absent)")
 	runID := flag.String("run-id", "", "run identifier; defaults to the scenario basename + start time")
+	transport := flag.String("transport", "ws", "subscriber transport: ws (raw WebSocket) | sse (Server-Sent Events, Last-Event-ID recovery)")
 	flag.Parse()
 
 	if *wsURL == "" || *httpURL == "" || *token == "" || *scenarioPath == "" || *outDir == "" {
 		fmt.Fprintln(os.Stderr, "bench: --ws, --http, --token, --scenario, and --out are all required")
+		return 2
+	}
+	if *transport != "ws" && *transport != "sse" {
+		fmt.Fprintf(os.Stderr, "bench: --transport must be ws or sse, got %q\n", *transport)
 		return 2
 	}
 
@@ -84,14 +89,21 @@ func run() int {
 
 	deps := scenario.Deps{
 		StartSub: func(ctx context.Context, subID string, channels []string) (scenario.Subscriber, error) {
-			return sub.Start(ctx, sub.Config{
-				URL:      *wsURL,
+			// The SSE subscriber dials the HTTP base (GET /sse); the WS one dials
+			// the ws:// base. Explicit mode, no inference (§XV).
+			cfg := sub.Config{
 				Token:    *token,
 				RunID:    id,
 				ClientID: subID,
 				Channels: channels,
 				LogPath:  filepath.Join(logsDir, subID+".rlog"),
-			})
+			}
+			if *transport == "sse" {
+				cfg.URL = *httpURL
+				return sub.StartSSE(ctx, cfg)
+			}
+			cfg.URL = *wsURL
+			return sub.Start(ctx, cfg)
 		},
 		RunPub: func(ctx context.Context, plans []pub.ChannelPlan) (pub.Manifest, error) {
 			publisher := restpub.New(*httpURL, *token)
@@ -169,6 +181,7 @@ func run() int {
 	result := report.Result{
 		RunID:                id,
 		Scenario:             filepath.Base(*scenarioPath),
+		Transport:            *transport,
 		Pass:                 res.Check.Pass() && harnessOK && recoveryOK,
 		Latency:              latency,
 		DriverCPU:            driverCPU,
