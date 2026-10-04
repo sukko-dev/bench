@@ -50,6 +50,15 @@ tasks:
         ADMIN_BOOTSTRAP_KEY="$(sukko auth pubkey)" \
         CREDENTIALS_ENCRYPTION_KEY="$(cat "$credfile")" \
           {{.COMPOSE}} up -d --scale ws-server={{.REPLICAS}} --wait
+      # Single-node Redpanda acks a produce BEFORE fsync by default (write_caching=true),
+      # so a hard `docker kill` (the redpanda fault) loses the acked-but-unflushed window —
+      # which surfaces as data-loss "holes" that are an artifact of the single-node dev stack,
+      # NOT the product (ws-server produces acks=all+idempotent and consumes commit-after-
+      # broadcast). Force fsync-before-ack so an acked write is durable across the kill; this
+      # is set before `bootstrap` creates the topic, so the topic inherits it. Proven two-sided
+      # (2026-10-04): write_caching=true → up to 32 holes/run under redpanda-kill; =false → 0/5
+      # runs. Production runs replicated (RF>=3) and does not rely on this single-node setting.
+      - '{{.COMPOSE}} exec -T redpanda rpk cluster config set write_caching_default false'
 
   stack-down:
     desc: Tear the stack down and delete its volumes
