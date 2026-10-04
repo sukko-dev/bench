@@ -74,7 +74,7 @@ case "$(uname -s)" in
 esac
 KEYPEM="${KEYPEM:-$SUKKO_CONFIG_DIR/sukko/keys/$TENANT/benchkey.pem}"
 TOKEN="$(sukko token generate --tenant "$TENANT" --sub bench-driver \
-  --key-file "$KEYPEM" --key-id benchkey --algorithm ES256 --ttl 1h)"
+  --key-file "$KEYPEM" --key-id benchkey --algorithm ES256 --ttl 8h)"
 
 cat > .bench.env <<ENV
 BENCH_WS=$GW_WS

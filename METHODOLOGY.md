@@ -138,6 +138,18 @@ Mid-burst, one fault per run, ×5 runs each:
 Recovery metrics per fault: fault→reconnected, reconnected→gap-closed,
 checker verdict.
 
+**Broker durability for the Redpanda kill.** A `docker kill` is a hard SIGKILL with no
+graceful flush. Single-node Redpanda defaults to `write_caching=true` — it acknowledges a
+produce *before* the record is fsync'd to disk — so a hard kill drops the acked-but-unflushed
+window, which the checker would report as holes. That is a property of the single-node dev
+stack, not of ws-server (which produces `acks=all`+idempotent and consumes commit-after-
+broadcast). `stack-up` therefore sets `write_caching_default=false` (fsync-before-ack) so an
+acknowledged write is durable across the kill, and the zero-loss claim is tested against a
+broker that honors the acknowledgement. Verified two-sided (2026-10-04): `write_caching=true`
+→ up to 32 holes/run under the Redpanda kill; `=false` → 0 holes across 5 runs. Production
+deployments run Redpanda replicated (RF≥3), where a single-broker kill does not lose acked
+data regardless of this setting.
+
 ## 6. The checker
 
 Zero loss is a verdict computed from data (`internal/check`), per
