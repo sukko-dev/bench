@@ -1,0 +1,24 @@
+{
+  "run_id": "odds-burst",
+  "scenario": "odds-burst.toml",
+  "transport": "ws",
+  "pass": true,
+  "latency": {
+    "count": 211200,
+    "negative": 0,
+    "p50": "25.358856ms",
+    "p99": "43.967801ms",
+    "p999": "112.011452ms",
+    "max": "121.76134ms"
+  },
+  "driver_cpu": {
+    "user_s": 15.898821,
+    "sys_s": 6.958369,
+    "percent_wall": 12.571743823176842
+  },
+  "holes": 0,
+  "confirmed_publishes": 53280,
+  "unconfirmed_publishes": 0,
+  "warmup": "2s",
+  "warmup_excluded": 1920
+}
