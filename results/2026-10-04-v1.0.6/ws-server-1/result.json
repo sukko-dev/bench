@@ -1,0 +1,2681 @@
+{
+  "run_id": "odds-burst",
+  "scenario": "odds-burst.toml",
+  "transport": "ws",
+  "pass": true,
+  "latency": {
+    "count": 223961,
+    "negative": 0,
+    "p50": "28.254853ms",
+    "p99": "31.464444446s",
+    "p999": "33.402119187s",
+    "max": "33.408869853s"
+  },
+  "driver_cpu": {
+    "user_s": 14.949813,
+    "sys_s": 8.163912,
+    "percent_wall": 12.711983102428123
+  },
+  "holes": 0,
+  "confirmed_publishes": 53280,
+  "unconfirmed_publishes": 0,
+  "warmup": "2s",
+  "warmup_excluded": 1920,
+  "events": {
+    "disconnected": 241,
+    "resubscribed": 241
+  },
+  "subscribers": [
+    {
+      "id": "bench-sub-0",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-1",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-10",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-11",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-12",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-13",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-14",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-15",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-17",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-18",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-21",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-29",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-30",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-31",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-35",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-38",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-39",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-40",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-44",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-46",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-48",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-49",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-51",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-53",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-54",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-57",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-58",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-59",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-60",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-61",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-67",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-68",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-69",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-70",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-71",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-74",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-75",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-76",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-77",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-78",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-79",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-81",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-83",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-85",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-86",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-88",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-92",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-94",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-95",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-96",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-97",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-98",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-99",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-101",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-103",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-104",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-108",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-112",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-115",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-116",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-117",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-118",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-122",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-123",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-126",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-128",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-130",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-132",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-135",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-137",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-138",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-139",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-140",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-146",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-148",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-149",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-150",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-151",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-152",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-153",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-156",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-159",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-160",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-161",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-162",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-166",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-169",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-170",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-171",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-172",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-173",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-175",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-181",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-185",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-186",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-187",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-188",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-189",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-190",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-191",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-195",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-197",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-198",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-199",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-201",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-202",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-204",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-211",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-212",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-213",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-215",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-216",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-218",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-220",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-222",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-223",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-226",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-229",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-231",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-233",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-234",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-235",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-236",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-237",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-238",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-240",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-242",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-243",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-245",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-247",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-250",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-254",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-255",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-256",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-257",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-258",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-259",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-260",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-262",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-263",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-268",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-269",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-270",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-273",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-274",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-276",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-278",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-281",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-290",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-291",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-292",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-295",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-297",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-299",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-302",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-304",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-306",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-308",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-309",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-312",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-315",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-317",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-322",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-324",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-327",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-328",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-334",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-335",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-339",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-341",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-342",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-343",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-345",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+121.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-346",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-351",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-356",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-357",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-358",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-359",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-360",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-362",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-363",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-367",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-369",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-370",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-372",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-373",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-374",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-375",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-377",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-380",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-381",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-382",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-384",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-385",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-387",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-388",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-391",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-392",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-393",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-394",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-395",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-396",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-397",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-399",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-400",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-402",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-404",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-407",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-409",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-411",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-416",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-418",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-421",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-423",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-427",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-429",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-430",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-433",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-437",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-438",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-439",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-440",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-443",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-445",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-448",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-449",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-450",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-452",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-454",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-455",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-457",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-459",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-461",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-462",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-463",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-469",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-472",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.2s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-476",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-477",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.0s resubscribed"
+      ]
+    },
+    {
+      "id": "bench-sub-479",
+      "events": {
+        "disconnected": 1,
+        "resubscribed": 1
+      },
+      "event_log": [
+        "+120.0s disconnected",
+        "+120.1s resubscribed"
+      ]
+    }
+  ]
+}
