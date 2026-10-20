@@ -117,7 +117,7 @@ values in the run's notes.
 
 The Go driver and its analysis are unit-tested and `-race`-clean.
 
-**First live boot completed 2026-09-11** (source-built images, unlicensed Community
+**First live boot completed 2026-09-11** (source-built images, Community
 stack). What it established:
 
 - The harness runs end to end: provision → subscribe → publish → fan-out → receive
