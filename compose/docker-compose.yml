@@ -58,7 +58,12 @@ services:
       - "18080:8080"
     environment:
       ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:-}"
-      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-}" # empty ⇒ Community; set ⇒ Pro (SSE matrix, ADR-0030)
+      # Defaults to the committed prod-signed bench Community key (ADR-0038: Community now
+      # requires an account-issued key — an empty key is refused at startup). NOT a secret:
+      # a Community key unlocks only the free tier, and it verifies against the production
+      # key embedded in the published images. Override by exporting SUKKO_LICENSE_KEY (e.g. a
+      # dev Pro key with source-built sukko_e2e images for the Pro SSE matrix, ADR-0030).
+      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-eyJlZGl0aW9uIjoiY29tbXVuaXR5Iiwib3JnIjoiS2x1cnZpbyIsImV4cCI6MjEwODExMjcyNSwiaWF0IjoxNzkyNDkzNTI2LCJsaW1pdHMiOnsiZWRpdGlvbiI6ImNvbW11bml0eSIsIm1heF90ZW5hbnRzIjozLCJtYXhfdG90YWxfY29ubmVjdGlvbnMiOjUwMCwibWF4X3NoYXJkcyI6MSwibWF4X3RvcGljc19wZXJfdGVuYW50IjoxMCwibWF4X3JvdXRpbmdfcnVsZXNfcGVyX3RlbmFudCI6MTB9fQ.e0nWF3QBfUHubE8_KvGmIfAV0jGT_ZR0hyt0qDKiMcDvNfeucuD9kuGTSey2d1wIR3o_5XP5BZWKwpenHwTQfA}"
       # Pro/Enterprise editions require these two (webhooks are Pro-gated); empty is fine on
       # Community. The bench runs no webhook-worker and exercises no webhooks — they exist only
       # to satisfy Pro config validation for the SSE matrix. The worker addr is dialed lazily
@@ -89,7 +94,8 @@ services:
       # signed token ⇒ Pro, which unlocks the Pro-gated SSE transport for the SSE
       # fault matrix (ADR-0030). Verified against the license key baked into the
       # image, so a dev-minted token requires a source-built image.
-      - SUKKO_LICENSE_KEY=${SUKKO_LICENSE_KEY:-}
+      # Same committed Community key default as provisioning above (ADR-0038).
+      - SUKKO_LICENSE_KEY=${SUKKO_LICENSE_KEY:-eyJlZGl0aW9uIjoiY29tbXVuaXR5Iiwib3JnIjoiS2x1cnZpbyIsImV4cCI6MjEwODExMjcyNSwiaWF0IjoxNzkyNDkzNTI2LCJsaW1pdHMiOnsiZWRpdGlvbiI6ImNvbW11bml0eSIsIm1heF90ZW5hbnRzIjozLCJtYXhfdG90YWxfY29ubmVjdGlvbnMiOjUwMCwibWF4X3NoYXJkcyI6MSwibWF4X3RvcGljc19wZXJfdGVuYW50IjoxMCwibWF4X3JvdXRpbmdfcnVsZXNfcGVyX3RlbmFudCI6MTB9fQ.e0nWF3QBfUHubE8_KvGmIfAV0jGT_ZR0hyt0qDKiMcDvNfeucuD9kuGTSey2d1wIR3o_5XP5BZWKwpenHwTQfA}
       - MESSAGE_BACKEND=kafka
       - KAFKA_BROKERS=redpanda:9092
       - KAFKA_TOPIC_NAMESPACE=local
@@ -121,7 +127,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-}" # empty ⇒ Community; set ⇒ Pro, unlocks the SSE transport (ADR-0030)
+      # Same committed Community key default as provisioning above (ADR-0038); override to a
+      # Pro key (with source-built sukko_e2e images) to unlock the SSE transport (ADR-0030).
+      SUKKO_LICENSE_KEY: "${SUKKO_LICENSE_KEY:-eyJlZGl0aW9uIjoiY29tbXVuaXR5Iiwib3JnIjoiS2x1cnZpbyIsImV4cCI6MjEwODExMjcyNSwiaWF0IjoxNzkyNDkzNTI2LCJsaW1pdHMiOnsiZWRpdGlvbiI6ImNvbW11bml0eSIsIm1heF90ZW5hbnRzIjozLCJtYXhfdG90YWxfY29ubmVjdGlvbnMiOjUwMCwibWF4X3NoYXJkcyI6MSwibWF4X3RvcGljc19wZXJfdGVuYW50IjoxMCwibWF4X3JvdXRpbmdfcnVsZXNfcGVyX3RlbmFudCI6MTB9fQ.e0nWF3QBfUHubE8_KvGmIfAV0jGT_ZR0hyt0qDKiMcDvNfeucuD9kuGTSey2d1wIR3o_5XP5BZWKwpenHwTQfA}"
       GATEWAY_BACKEND_URL: "ws://ws-server:3005/ws"
       SERVER_GRPC_ADDR: "ws-server:3006"
       # Tenant JWT signing keys, API keys and revocations reach the gateway ONLY over

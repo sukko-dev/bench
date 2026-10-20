@@ -2,8 +2,9 @@
 
 Reproducible benchmark for [Sukko](https://sukko.dev): latency under an
 odds-shaped burst workload, and checker-proven zero message loss while
-infrastructure is killed mid-burst. Runs entirely on the **Community edition** —
-no licence, on one rentable VM.
+infrastructure is killed mid-burst. Runs entirely on the **Community edition** — on a
+committed free-tier licence key (no signup needed to reproduce; ADR-0038), on one
+rentable VM.
 
 ## Running it
 
